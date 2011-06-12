@@ -18,6 +18,7 @@ AH_TEMPLATE(HAVE_XV, [Define if you have XVideo extension])
 AH_TEMPLATE(IPv6, [IPv6])
 AH_TEMPLATE(NEED_ALIGN, [Alignment])
 AH_TEMPLATE(DISABLE_TLS, [Disable TLS encryption])
+AH_TEMPLATE(WITH_SSE, [Enable SSE Optimizations])
 AH_TEMPLATE(WITH_XKBFILE, [Use xkbfile for keyboard handling])
 AH_TEMPLATE(WITH_DEBUG, [Turn on debugging messages])
 AH_TEMPLATE(WITH_DEBUG_RDP, [Turn on debugging messages])
@@ -1025,6 +1026,26 @@ AC_ARG_WITH([cunit],
 )
 
 #
+# SSE
+#
+sse="yes"
+AC_ARG_WITH([sse],
+	[AS_HELP_STRING([--with-sse], [Enable SSE Optimizations [default=yes]])])
+AS_IF([test "x$with_sse" == xno],
+	[
+		sse="no"
+		AM_CONDITIONAL(WITH_SSE, false)
+	],
+	[
+		sse="yes"
+		AM_CONDITIONAL(WITH_SSE, true)
+		AC_DEFINE(WITH_SSE,1)
+		CFLAGS="$CFLAGS -msse2"
+		REQUIRED_SUBDIRS="libfreerdp-rfx/sse $REQUIRED_SUBDIRS"
+	]
+)
+
+#
 # X11
 #
 AM_CONDITIONAL(WITH_X11, true)
@@ -1120,6 +1141,7 @@ freerdp.pc
 libfreerdp-asn1/Makefile
 libfreerdp-gdi/Makefile
 libfreerdp-rfx/Makefile
+libfreerdp-rfx/sse/Makefile
 libfreerdp-utils/Makefile
 libfreerdp-core/Makefile
 docs/Makefile

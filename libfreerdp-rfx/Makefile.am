@@ -21,7 +21,12 @@ libfreerdp_rfx_la_CFLAGS = \
 
 libfreerdp_rfx_la_LDFLAGS =
 
-libfreerdp_rfx_la_LIBDADD =
+libfreerdp_rfx_la_LIBADD =
+
+if WITH_SSE
+libfreerdp_rfx_la_CFLAGS += -I./sse
+libfreerdp_rfx_la_LIBADD += ./sse/libfreerdp-rfx-sse.la
+endif
 
 # extra
 EXTRA_DIST =

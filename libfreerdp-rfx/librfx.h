@@ -28,4 +28,12 @@
 #define DEBUG_RFX(fmt, ...) DEBUG_NULL(fmt, ## __VA_ARGS__)
 #endif
 
+#ifdef WITH_SSE
+#include "rfx_sse.h"
+#endif
+
+#ifndef RFX_INIT_SIMD
+#define RFX_INIT_SIMD(_rfx_context) do { } while (0)
+#endif
+
 #endif /* __LIBRFX_H */

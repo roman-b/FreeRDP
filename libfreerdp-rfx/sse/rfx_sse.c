@@ -1,8 +1,8 @@
 /*
    FreeRDP: A Remote Desktop Protocol client.
-   RemoteFX Codec Library - Decode
+   RemoteFX Codec Library - SSE Optimizations
 
-   Copyright 2011 Vic Lee
+   Copyright 2011 Stephen Erisman
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -17,19 +17,16 @@
    limitations under the License.
 */
 
-#ifndef __RFX_DECODE_H
-#define __RFX_DECODE_H
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include <freerdp/rfx.h>
+#include "rfx_sse2.h"
 
-void
-rfx_decode_YCbCr_to_RGB(uint32 * y_r_buf, uint32 * cb_g_buf, uint32 * cr_b_buf);
+#include "rfx_sse.h"
 
-unsigned char *
-rfx_decode_rgb(RFX_CONTEXT * context,
-	const uint8 * y_data, int y_size, const uint32 * y_quants,
-	const uint8 * cb_data, int cb_size, const uint32 * cb_quants,
-	const uint8 * cr_data, int cr_size, const uint32 * cr_quants, uint8* rgb_buffer);
-
-#endif
-
+void rfx_init_sse(RFX_CONTEXT * context)
+{
+	DEBUG_RFX("Using SSE2 optimizations");
+	context->decode_YCbCr_to_RGB = rfx_decode_YCbCr_to_RGB_SSE2;
+}
