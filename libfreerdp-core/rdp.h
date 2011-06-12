@@ -69,7 +69,7 @@ struct rdp_rdp
 	struct rdp_orders * orders;
 	struct rdp_pcache * pcache;
 	struct rdp_cache * cache;
-	struct rdp_app * app; // RemoteApp
+	struct rdp_rail * rail; // remote applications integrated locally
 	struct rdp_ext * ext;
 	/* Session Directory redirection */
 	int redirect;

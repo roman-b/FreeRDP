@@ -810,7 +810,12 @@ freerdp_chanman_load_plugin(rdpChanMan * chan_man, rdpSet * settings,
 }
 
 /* go through and inform all the libraries that we are initialized
-   called only from main thread */
+   called only from main thread
+
+   TODO: Main point, where channel manager can link with instance of rdp connection
+   and cam register "fake" library from list of fake libraries in rdpInst
+
+   */
 int
 freerdp_chanman_pre_connect(rdpChanMan * chan_man, rdpInst * inst)
 {

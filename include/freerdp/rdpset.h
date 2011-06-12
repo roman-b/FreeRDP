@@ -66,8 +66,12 @@ struct rdp_set
 	int rdp_security;
 	int encryption;
 	int rdp_version;
-	int remote_app;
-	char app_name[64];
+
+	int  rail_mode_enabled;
+	char rail_exe_or_file[64];
+	char rail_working_directory[256];
+	char rail_arguments[256];
+
 	int console_session;
 	int server_depth;
 	int bitmap_cache;

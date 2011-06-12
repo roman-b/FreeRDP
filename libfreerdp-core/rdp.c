@@ -726,11 +726,11 @@ rdp_send_confirm_active(rdpRdp * rdp)
 		rdp_out_offscreenscache_capset(caps);
 	}
 	rdp_out_glyphcache_capset(caps);
-	if (rdp->settings->remote_app)
+	if (rdp->settings->rail_mode_enabled)
 	{
 		numberCapabilities += 2;
 		rdp_out_rail_capset(caps);
-		rdp_out_window_capset(caps);
+		rdp_out_window_capset(rdp, caps);
 	}
 	if (rdp->got_large_pointer_caps)
 	{
@@ -1666,6 +1666,10 @@ rdp_connect(rdpRdp * rdp)
 	{
 		connect_flags |= INFO_REMOTECONSOLEAUDIO;
 	}
+	if (rdp->settings->rail_mode_enabled)
+	{
+		connect_flags |= INFO_RAIL;
+	}
 
 	if (!sec_connect(rdp->sec, rdp->settings->server, rdp->settings->username, rdp->settings->tcp_port_rdp))
 		return False;
@@ -1745,6 +1749,7 @@ rdp_new(struct rdp_set *settings, struct rdp_inst *inst)
 		self->pcache = pcache_new(self);
 		self->cache = cache_new(self);
 		self->ext = ext_new(self);
+		self->rail = rail_new(self);
 	}
 	return self;
 }
@@ -1763,6 +1768,7 @@ rdp_free(rdpRdp * rdp)
 		xfree(rdp->buffer);
 		sec_free(rdp->sec);
 		ext_free(rdp->ext);
+		rail_free(rdp->rail);
 		xfree(rdp->redirect_server);
 		xfree(rdp->redirect_routingtoken);
 		xfree(rdp->redirect_username);

@@ -49,11 +49,11 @@ rdp_send_client_execute_pdu(rdpRdp * rdp)
 	rdp_out_rail_pdu_header(s, RDP_RAIL_ORDER_EXEC, 12);
 
 	application_name = freerdp_uniconv_out(rdp->uniconv,
-			rdp->app->application_name, &application_name_len);
+			rdp->settings->rail_exe_or_file, &application_name_len);
 	working_directory = freerdp_uniconv_out(rdp->uniconv,
-			rdp->app->working_directory, &working_directory_len);
+			rdp->settings->rail_working_directory, &working_directory_len);
 	arguments = freerdp_uniconv_out(rdp->uniconv,
-			rdp->app->arguments, &arguments_len);
+			rdp->settings->rail_arguments, &arguments_len);
 
 	flags = RAIL_EXEC_FLAG_EXPAND_WORKINGDIRECTORY | RAIL_EXEC_FLAG_EXPAND_ARGUMENTS;
 
@@ -72,3 +72,27 @@ rdp_send_client_execute_pdu(rdpRdp * rdp)
 	s_mark_end(s);
 	sec_send(rdp->sec, s, rdp->settings->encryption ? SEC_ENCRYPT : 0);
 }
+
+rdpRail *
+rail_new(struct rdp_rdp * rdp)
+{
+	rdpRail * self;
+
+	self = (rdpRail *) xmalloc(sizeof(rdpRail));
+	if (self != NULL)
+	{
+		memset(self, 0, sizeof(rdpRail));
+		self->rdp = rdp;
+	}
+	return self;
+}
+
+void
+rail_free(rdpRail * rail)
+{
+	if (rail != NULL)
+	{
+		xfree(rail);
+	}
+}
+

@@ -398,9 +398,9 @@ process_params(xfInfo * xfi, int argc, char ** argv, int * pindex)
 				printf("missing application name\n");
 				exit(XF_EXIT_WRONG_PARAM);
 			}
-			strncpy(settings->app_name, argv[*pindex], sizeof(settings->app_name) - 1);
-			settings->app_name[sizeof(settings->app_name) - 1] = 0;
-			settings->remote_app = 1;
+			strncpy(settings->rail_exe_or_file, argv[*pindex], sizeof(settings->rail_exe_or_file) - 1);
+			settings->rail_exe_or_file[sizeof(settings->rail_exe_or_file) - 1] = 0;
+			settings->rail_mode_enabled = 1;
 		}
 #ifdef HAVE_XV
 		else if (strcmp("--xv-port", argv[*pindex]) == 0)
