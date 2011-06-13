@@ -96,3 +96,8 @@ rail_free(rdpRail * rail)
 	}
 }
 
+int RailCoreVirtualChannelEntry(PCHANNEL_ENTRY_POINTS pEntryPoints)
+{
+	return 0;
+}
+

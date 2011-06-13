@@ -28,7 +28,9 @@
 #ifndef __RAIL_H
 #define	__RAIL_H
 
+#include <freerdp/vchan.h>
 #include "rdp.h"
+
 
 typedef struct _RAIL_UNICODE_STRING
 {
@@ -126,7 +128,6 @@ typedef struct _RAIL_NOTIFY_ICON_INFO
 
 } RAIL_NOTIFY_ICON_INFO;
 
-
 struct rdp_rail
 {
 	struct rdp_rdp * rdp;
@@ -147,9 +148,11 @@ rail_new(struct rdp_rdp * rdp);
 void
 rail_free(rdpRail * rail);
 
-
 void
 rdp_send_client_execute_pdu(rdpRdp * rdp);
+
+int RailCoreVirtualChannelEntry(PCHANNEL_ENTRY_POINTS pEntryPoints);
+
 
 
 #endif	// __RAIL_H

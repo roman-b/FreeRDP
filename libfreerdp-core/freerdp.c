@@ -25,6 +25,7 @@
 #include "tcp.h"
 #include "chan.h"
 #include "ext.h"
+#include "rail.h"
 #include <freerdp/freerdp.h>
 #include <freerdp/utils/memory.h>
 
@@ -602,6 +603,24 @@ freerdp_global_finish(void)
 	rdp_global_finish();
 }
 
+/* In this function you can add core virtual channel function for registering
+ * and using channels channels in freerdp core library.
+ */
+void
+freerdp_register_core_vchannels(rdpInst * inst, rdpSet * settings)
+{
+	/* WARNING!!!
+	 * core_vchannels array size is equal to CHANNEL_MAX_COUNT.
+	 * So you MUST be careful when add new core channels.
+	 */
+
+	if (settings->rail_mode_enabled)
+	{
+		inst->core_vchannels[inst->core_vchannels_number] = RailCoreVirtualChannelEntry;
+		inst->core_vchannels_number++;
+	}
+}
+
 rdpInst *
 freerdp_new(rdpSet * settings)
 {
@@ -624,6 +643,10 @@ freerdp_new(rdpSet * settings)
 	inst->rdp_send_frame_ack = l_rdp_send_frame_ack;
 	inst->rdp = (void *) rdp_new(settings, inst);
 	inst->disc_reason = 0;
+	inst->core_vchannels_number = 0;
+
+	freerdp_register_core_vchannels(inst, settings);
+
 	return inst;
 }
 

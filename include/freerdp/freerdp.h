@@ -23,7 +23,10 @@
 #include "rdpset.h"
 #include "types/ui.h"
 #include "constants/ui.h"
+#include "utils/chan_plugin.h"
 #include "rdpext.h"
+#include "vchan.h"
+
 
 #define FREERDP_INTERFACE_VERSION 4
 
@@ -144,6 +147,10 @@ struct rdp_inst
 	int (* ui_decode)(rdpInst * inst, uint8 * data, int data_size);
 	RD_BOOL (* ui_check_certificate)(rdpInst * inst, const char * fingerprint,
 		const char * subject, const char * issuer, RD_BOOL verified);
+
+	/*Faked core virtual channels*/
+	size_t core_vchannels_number;
+	PVIRTUALCHANNELENTRY core_vchannels[CHANNEL_MAX_COUNT];
 };
 
 FREERDP_API rdpInst *

@@ -729,55 +729,31 @@ freerdp_chanman_free(rdpChanMan * chan_man)
 	free(chan_man);
 }
 
-/* this is called when processing the command line parameters
-   called only from main thread */
+/* this is called when:
+ * 1) processing the command line parameters
+ * 2) on pre_connect
+ * Called only from main thread.
+ */
+
 int
-freerdp_chanman_load_plugin(rdpChanMan * chan_man, rdpSet * settings,
-	const char * filename, void * data)
+freerdp_chanman_register_vchannel_entry(rdpChanMan * chan_man,
+		rdpSet * settings, void * lib_handle, PVIRTUALCHANNELENTRY entry,
+		void * data)
 {
 	struct lib_data * lib;
 	CHANNEL_ENTRY_POINTS_EX ep;
 	int ok;
-	CHR path[255];
 
-	DEBUG_CHANMAN("input filename %s", filename);
 	if (chan_man->num_libs + 1 >= CHANNEL_MAX_COUNT)
 	{
-		DEBUG_CHANMAN("freerdp_chanman_load_plugin: too many channels");
+		DEBUG_CHANMAN("freerdp_chanman_register_vchannel_entry: too many channels");
 		return 1;
 	}
 	lib = chan_man->libs + chan_man->num_libs;
-	if (strchr(filename, PATH_SEPARATOR) == NULL)
-	{
-#ifdef _WIN32
-		swprintf(path, sizeof(path), L"./%S." PLUGIN_EXT, filename);
-#else
-		snprintf(path, sizeof(path), PLUGIN_PATH "/%s." PLUGIN_EXT, filename);
-#endif
-	}
-	else
-	{
-#ifdef _WIN32
-		swprintf(path, sizeof(path), L"%S", filename);
-#else
-		strncpy(path, filename, sizeof(path));
-#endif
-	}
-	DEBUG_CHANMAN("freerdp_chanman_load_plugin %s: %s", filename, path);
-	lib->han = DLOPEN(path);
-	if (lib->han == 0)
-	{
-		DEBUG_CHANMAN("freerdp_chanman_load_plugin: failed to load library");
-		return 1;
-	}
-	lib->entry = (PVIRTUALCHANNELENTRY)
-		DLSYM(lib->han, CHANNEL_EXPORT_FUNC_NAME);
-	if (lib->entry == 0)
-	{
-		DEBUG_CHANMAN("freerdp_chanman_load_plugin: failed to find export function");
-		DLCLOSE(lib->han);
-		return 1;
-	}
+
+	lib->han = lib_handle;
+	lib->entry = entry;
+
 	ep.cbSize = sizeof(ep);
 	ep.protocolVersion = VIRTUAL_CHANNEL_VERSION_WIN2000;
 	ep.pVirtualChannelInit = MyVirtualChannelInit;
@@ -800,10 +776,68 @@ freerdp_chanman_load_plugin(rdpChanMan * chan_man, rdpSet * settings,
 	/* disable MyVirtualChannelInit */
 	chan_man->settings = 0;
 	chan_man->can_call_init = 0;
+
 	if (!ok)
 	{
+		DEBUG_CHANMAN("freerdp_chanman_register_vchannel_entry: export function call failed");
+		return 1;
+	}
+	return 0;
+}
+
+/* this is called when processing the command line parameters
+   called only from main thread */
+int
+freerdp_chanman_load_plugin(rdpChanMan * chan_man, rdpSet * settings,
+	const char * filename, void * data)
+{
+	struct lib_data lib;
+	CHR path[255];
+
+	DEBUG_CHANMAN("input filename %s", filename);
+	if (chan_man->num_libs + 1 >= CHANNEL_MAX_COUNT)
+	{
+		DEBUG_CHANMAN("freerdp_chanman_load_plugin: too many channels");
+		return 1;
+	}
+
+	if (strchr(filename, PATH_SEPARATOR) == NULL)
+	{
+#ifdef _WIN32
+		swprintf(path, sizeof(path), L"./%S." PLUGIN_EXT, filename);
+#else
+		snprintf(path, sizeof(path), PLUGIN_PATH "/%s." PLUGIN_EXT, filename);
+#endif
+	}
+	else
+	{
+#ifdef _WIN32
+		swprintf(path, sizeof(path), L"%S", filename);
+#else
+		strncpy(path, filename, sizeof(path));
+#endif
+	}
+	DEBUG_CHANMAN("freerdp_chanman_load_plugin %s: %s", filename, path);
+	lib.han = DLOPEN(path);
+	if (lib.han == 0)
+	{
+		DEBUG_CHANMAN("freerdp_chanman_load_plugin: failed to load library");
+		return 1;
+	}
+	lib.entry = (PVIRTUALCHANNELENTRY)
+		DLSYM(lib.han, CHANNEL_EXPORT_FUNC_NAME);
+	if (lib.entry == 0)
+	{
+		DEBUG_CHANMAN("freerdp_chanman_load_plugin: failed to find export function");
+		DLCLOSE(lib.han);
+		return 1;
+	}
+
+	if (freerdp_chanman_register_vchannel_entry(chan_man, settings, lib.han,
+			lib.entry, data) != 0)
+	{
 		DEBUG_CHANMAN("freerdp_chanman_load_plugin: export function call failed");
-		DLCLOSE(lib->han);
+		DLCLOSE(lib.han);
 		return 1;
 	}
 	return 0;
@@ -847,6 +881,13 @@ freerdp_chanman_pre_connect(rdpChanMan * chan_man, rdpInst * inst)
 		chan_man->can_call_init = 0;
 		chan_man->settings = 0;
 		DEBUG_CHANMAN("freerdp_chanman_pre_connect: registered fake rdpdr for rdpsnd.");
+	}
+
+	/* Registering core virtual channels. */
+	for (index = 0; index < inst->core_vchannels_number; index++)
+	{
+		freerdp_chanman_register_vchannel_entry(chan_man, inst->settings,
+				NULL, inst->core_vchannels[index], NULL);
 	}
 
 	for (index = 0; index < chan_man->num_libs; index++)
