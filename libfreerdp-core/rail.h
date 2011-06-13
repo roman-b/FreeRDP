@@ -19,8 +19,8 @@
 
 /* TODO:
  * - add session termination if server does not support session
- * - add orders receiving
  * - add core virtual channel
+ * - add RAIL order handlers
  * - add establishing RAIL connection ([MS-RDPERP] 1.3.2.1)
  */
 
@@ -30,28 +30,28 @@
 
 #include "rdp.h"
 
-typedef struct _RD_UNICODE_STRING
+typedef struct _RAIL_UNICODE_STRING
 {
 	uint16  length;
-	uint16	*buffer;
-} RD_UNICODE_STRING;
+	uint8	*buffer;
+} RAIL_UNICODE_STRING;
 
 typedef struct _RAIL_CACHED_ICON_INFO
 {
-	size_t cache_id;
-	size_t cache_entry_id;
+	uint8 	cache_id;
+	uint16 	cache_entry_id;
 } RAIL_CACHED_ICON_INFO;
 
 typedef struct _RAIL_ICON_INFO
 {
 	RAIL_CACHED_ICON_INFO cache_info;
 
-	size_t bpp;
-	size_t width;
-	size_t height;
-	size_t color_table_size;
-	size_t bits_mask_image_size;
-	size_t bits_color_image_size;
+	uint8  bpp;
+	uint16 width;
+	uint16 height;
+	uint16 color_table_size;
+	uint16 bits_mask_size;
+	uint16 bits_color_size;
 
 	uint8 *color_table;
 	uint8 *bits_mask;
@@ -59,10 +59,73 @@ typedef struct _RAIL_ICON_INFO
 
 } RAIL_ICON_INFO;
 
+typedef struct _RAIL_RECT_16
+{
+	uint16 left;
+	uint16 top;
+	uint16 right;
+	uint16 bottom;
+
+} RAIL_RECT_16;
+
 typedef struct _RAIL_WINDOW_INFO
 {
+	RAIL_UNICODE_STRING title_info;
+
+	uint32	owner_window_id;
+	uint32	style;
+	uint32	extened_style;
+	uint8	show_state;
+
+	uint32	client_offset_x;
+	uint32	client_offset_y;
+
+	uint32	client_area_width;
+	uint32	client_area_height;
+	uint8	rp_content;
+	uint32	root_parent_handle;
+
+	uint32	window_offset_x;
+	uint32	window_offset_y;
+
+	uint32	window_client_delta_x;
+	uint32	window_client_delta_y;
+	uint32	window_width;
+	uint32	window_height;
+
+	uint32			window_rects_number;
+	RAIL_RECT_16* 	window_rects;
+
+	uint32	visible_offset_x;
+	uint32	visible_offset_y;
+
+	uint32			visibility_rects_number;
+	RAIL_RECT_16* 	visibility_rects;
 
 } RAIL_WINDOW_INFO;
+
+typedef struct _RAIL_NOTIFY_ICON_INFOTIP
+{
+	uint32 timeout;
+	uint32 info_flags;
+
+	RAIL_UNICODE_STRING info_tip_text;
+	RAIL_UNICODE_STRING title;
+
+} RAIL_NOTIFY_ICON_INFOTIP;
+
+typedef struct _RAIL_NOTIFY_ICON_INFO
+{
+	uint32 version;
+	uint32 state;
+
+	RAIL_UNICODE_STRING 		tool_tip;
+	RAIL_NOTIFY_ICON_INFOTIP 	info_tip;
+	RAIL_ICON_INFO 				icon;
+	RAIL_CACHED_ICON_INFO   	cached_icon;
+
+} RAIL_NOTIFY_ICON_INFO;
+
 
 struct rdp_rail
 {
