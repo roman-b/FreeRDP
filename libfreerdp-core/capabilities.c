@@ -914,12 +914,15 @@ void rdp_process_draw_gdiplus_capset(rdpRdp * rdp, STREAM s)
  * @param s
  */
 
-void rdp_out_rail_capset(STREAM s)
+void rdp_out_rail_capset(rdpRdp * rdp, STREAM s)
 {
 	capsetHeaderRef header;
+	uint32 RailSupportLevel = 0;
+
+	rail_get_rail_capset(rdp->rail_session, &RailSupportLevel);
 
 	header = rdp_skip_capset_header(s);
-	out_uint32_le(s, RAIL_LEVEL_SUPPORTED | RAIL_LEVEL_DOCKED_LANGBAR_SUPPORTED); /* RailSupportLevel */
+	out_uint32_le(s, RailSupportLevel); /* RailSupportLevel */
 	rdp_out_capset_header(s, header, CAPSET_TYPE_RAIL);
 }
 
@@ -932,12 +935,10 @@ void rdp_out_rail_capset(STREAM s)
 
 void rdp_process_rail_capset(rdpRdp * rdp, STREAM s)
 {
-	uint32 railSupportLevel;
+	uint32 railSupportLevel = 0;
 
 	in_uint32_le(s, railSupportLevel); /* railSupportLevel */
-
-	rdp->rail->rail_mode_supported 		= ((railSupportLevel & WINDOW_LEVEL_SUPPORTED) ? 1 : 0);
-	rdp->rail->docked_langbar_supported	= ((railSupportLevel & WINDOW_LEVEL_SUPPORTED_EX) ? 1 : 0);
+	rail_process_rail_capset(rdp->rail_session, railSupportLevel);
 }
 
 /**
@@ -950,12 +951,16 @@ void rdp_process_rail_capset(rdpRdp * rdp, STREAM s)
 void rdp_out_window_capset(rdpRdp * rdp, STREAM s)
 {
 	capsetHeaderRef header;
-	uint8  numIconCaches = (uint8)rdp->rail->number_icon_caches;
-	uint16 numIconCacheEntries = (uint16)rdp->rail->number_icon_cache_entries;
+	uint32 windowSupportLevel = 0;
+	uint8  numIconCaches = 0;
+	uint16 numIconCacheEntries = 0;
 
 	header = rdp_skip_capset_header(s);
 
-	out_uint32_le(s, WINDOW_LEVEL_SUPPORTED | WINDOW_LEVEL_SUPPORTED_EX);
+	rail_get_window_capset(rdp->rail_session, &windowSupportLevel,
+			&numIconCaches, &numIconCacheEntries);
+
+	out_uint32_le(s, windowSupportLevel);
 	out_uint8(s, numIconCaches);
 	out_uint16_le(s, numIconCacheEntries);
 	rdp_out_capset_header(s, header, CAPSET_TYPE_WINDOW);
@@ -978,10 +983,8 @@ void rdp_process_window_capset(rdpRdp * rdp, STREAM s)
 	in_uint8(s, numIconCaches); /* numIconCaches */
 	in_uint16_le(s, numIconCacheEntries); /* numIconCacheEntries */
 
-	rdp->rail->window_level_supported = ((wndSupportLevel & WINDOW_LEVEL_SUPPORTED) ? 1 : 0);
-	rdp->rail->window_level_ex_supported = ((wndSupportLevel & WINDOW_LEVEL_SUPPORTED_EX) ? 1 : 0);
-	rdp->rail->number_icon_caches = numIconCaches;
-	rdp->rail->number_icon_cache_entries = numIconCacheEntries;
+	rail_process_window_capset(rdp->rail_session, wndSupportLevel, numIconCaches,
+			numIconCacheEntries);
 }
 
 /**

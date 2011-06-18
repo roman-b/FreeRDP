@@ -20,7 +20,7 @@ libfreerdp_core_la_SOURCES = \
 	orders.c orders.h \
 	stream.c stream.h \
 	pstcache.c pstcache.h \
-	rail.c rail.h \
+	rail.c rail_altsec_orders.c rail_channel_orders.c rail_core_plugin.c rail.h \
 	rdp.c rdp.h \
 	secure.c secure.h \
 	crypto.h \

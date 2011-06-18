@@ -3,6 +3,7 @@
    Remote Applications Integrated Locally (RAIL)
 
    Copyright 2009 Marc-Andre Moreau <marcandre.moreau@gmail.com>
+   Copyright 2011 Roman Barabanov <romanbarabanov@gmail.com>
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -29,7 +30,31 @@
 #define	__RAIL_H
 
 #include <freerdp/vchan.h>
+#include <freerdp/constants/rail.h>
 #include "rdp.h"
+
+/*
+ * RAIL library interface
+ * Initialization
+ * - create RAIL session according to settings
+ *
+ * For channels
+ * - rail_register_channel_sender(session, sender)
+ *   sender object is struct with sender opaque pointer and
+ *   with function rail_send_vchannel_data(sender_object, data, length) *
+ * - rail_on_channel_connected(session)
+ * - rail_on_channel_data_received(session, data, length)
+ * - rail_on_channel_terminated(session)
+ *
+ * For altsec window orders
+ * - rail_on_altsec_window_order_received(session, data, length)
+ *
+ * For UI
+ * - rail_register_ui_event_receiver(session, ui_event_receiver)
+ * - rail_on_ui_...
+ * - rail_on_ui_...
+ * etc
+ */
 
 
 typedef struct _RAIL_UNICODE_STRING
@@ -128,8 +153,28 @@ typedef struct _RAIL_NOTIFY_ICON_INFO
 
 } RAIL_NOTIFY_ICON_INFO;
 
-struct rdp_rail
+typedef struct _RAIL_VCHANNEL_SENDER
 {
+	void* sender_object;
+
+	void  (*send_rail_vchannel_data)(void* session, void* data, size_t length);
+
+} RAIL_VCHANNEL_SENDER;
+
+typedef struct _RAIL_UI_LISTENER
+{
+	void* ui_listener;
+
+    // Example event
+	void (*ui_on_rail_event1)();
+
+} RAIL_UI_LISTENER;
+
+typedef struct _RAIL_SESSION
+{
+	RAIL_VCHANNEL_SENDER channel_sender;
+	RAIL_UI_LISTENER     ui_listener;
+
 	struct rdp_rdp * rdp;
 
 	int  rail_mode_supported;
@@ -139,17 +184,74 @@ struct rdp_rail
 
 	size_t  number_icon_caches;
 	size_t  number_icon_cache_entries;
-};
-typedef struct rdp_rail rdpRail;
 
-rdpRail *
-rail_new(struct rdp_rdp * rdp);
+} RAIL_SESSION;
 
-void
-rail_free(rdpRail * rail);
+RAIL_SESSION *
+rail_session_new(struct rdp_rdp * rdp);
 
 void
-rdp_send_client_execute_pdu(rdpRdp * rdp);
+rail_session_free(RAIL_SESSION * rail_session);
+
+/*For processing Capacities*/
+void
+rail_get_rail_capset(
+		RAIL_SESSION * rail_session,
+		uint32 * rail_support_level
+		);
+
+void
+rail_process_rail_capset(
+		RAIL_SESSION * rail_session,
+		uint32 rail_support_level
+		);
+
+void
+rail_get_window_capset(
+		RAIL_SESSION * rail_session,
+		uint32 * window_support_level,
+		uint8  * number_icon_caches,
+		uint16 * number_icon_cache_entries
+		);
+
+void
+rail_process_window_capset(
+		RAIL_SESSION * rail_session,
+		uint32 window_support_level,
+		uint8  number_icon_caches,
+		uint16 number_icon_cache_entries
+		);
+
+
+/* For processing Windowing Alternate Secondary Drawing Order*/
+void
+rail_on_altsec_window_order_received(
+		RAIL_SESSION * rail_session,
+		void* data,
+		size_t length
+		);
+
+/* For communication with channel*/
+void
+rail_register_channel_sender(
+		RAIL_SESSION* rail_session,
+		RAIL_VCHANNEL_SENDER* sender
+		);
+
+void
+rail_on_channel_connected(RAIL_SESSION* rail_session);
+
+void
+rail_on_channel_terminated(RAIL_SESSION* rail_session);
+
+void
+rail_on_channel_data_received(
+		RAIL_SESSION * rail_session,
+		void*  data,
+		size_t length
+		);
+
+
 
 int RailCoreVirtualChannelEntry(PCHANNEL_ENTRY_POINTS pEntryPoints);
 

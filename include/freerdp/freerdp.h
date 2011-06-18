@@ -81,6 +81,10 @@ struct rdp_inst
 	int (* rdp_send_input_unicode)(rdpInst * inst, uint16 character);
 	int (* rdp_send_input_mouse)(rdpInst * inst, uint16 pointerFlags, uint16 xPos, uint16 yPos);
 	int (* rdp_sync_input)(rdpInst * inst, int toggle_flags);
+
+	/* rdp_channel_data is libfreerdp-core API for direct sending data into
+	 * specified channel.
+	 */
 	int (* rdp_channel_data)(rdpInst * inst, int chan_id, char * data, int data_size);
 	void (*rdp_suppress_output)(rdpInst * inst, int allow_display_updates);
 	void (* rdp_disconnect)(rdpInst * inst);
@@ -141,6 +145,10 @@ struct rdp_inst
 	RD_HBITMAP (* ui_create_surface)(rdpInst * inst, int width, int height, RD_HBITMAP old);
 	void (* ui_set_surface)(rdpInst * inst, RD_HBITMAP surface);
 	void (* ui_destroy_surface)(rdpInst * inst, RD_HBITMAP surface);
+
+	/* ui_channel_data is callback which called by freerdp-core
+	 * when it receive data in channel.
+	 */
 	void (* ui_channel_data)(rdpInst * inst, int chan_id, char * data, int data_size,
 		int flags, int total_size);
 	RD_BOOL (* ui_authenticate)(rdpInst * inst);

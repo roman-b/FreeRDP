@@ -729,7 +729,7 @@ rdp_send_confirm_active(rdpRdp * rdp)
 	if (rdp->settings->rail_mode_enabled)
 	{
 		numberCapabilities += 2;
-		rdp_out_rail_capset(caps);
+		rdp_out_rail_capset(rdp, caps);
 		rdp_out_window_capset(rdp, caps);
 	}
 	if (rdp->got_large_pointer_caps)
@@ -1753,7 +1753,7 @@ rdp_new(struct rdp_set *settings, struct rdp_inst *inst)
 		self->pcache = pcache_new(self);
 		self->cache = cache_new(self);
 		self->ext = ext_new(self);
-		self->rail = rail_new(self);
+		self->rail_session = rail_session_new(self);
 	}
 	return self;
 }
@@ -1772,7 +1772,7 @@ rdp_free(rdpRdp * rdp)
 		xfree(rdp->buffer);
 		sec_free(rdp->sec);
 		ext_free(rdp->ext);
-		rail_free(rdp->rail);
+		rail_session_free(rdp->rail_session);
 		xfree(rdp->redirect_server);
 		xfree(rdp->redirect_routingtoken);
 		xfree(rdp->redirect_username);

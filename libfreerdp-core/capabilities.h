@@ -63,7 +63,7 @@ rdp_out_drawninegridcache_capset(STREAM s);
 void
 rdp_out_draw_gdiplus_capset(STREAM s);
 void
-rdp_out_rail_capset(STREAM s);
+rdp_out_rail_capset(rdpRdp * rdp, STREAM s);
 void
 rdp_out_window_capset(rdpRdp * rdp, STREAM s);
 void

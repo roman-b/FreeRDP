@@ -47,6 +47,26 @@ stream_init(struct stream * st, size_t size)
 	return 0;
 }
 
+int
+stream_init_by_allocated_data(struct stream * st, void* data, size_t size)
+{
+	if (st == NULL)
+	{
+		return 1;
+	}
+
+	if (data == NULL)
+	{
+		return 1;
+	}
+
+	st->data = (unsigned char*)data;
+	st->size = size;
+	st->p = st->data;
+	st->end = st->data + st->size;
+	return 0;
+}
+
 struct stream *
 stream_new(int size)
 {

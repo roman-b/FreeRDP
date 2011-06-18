@@ -124,6 +124,11 @@ typedef struct stream *STREAM;
 
 int
 stream_init(struct stream * st, size_t size);
+
+int
+stream_init_by_allocated_data(struct stream * st, void* data, size_t size);
+
+
 struct stream *
 stream_new(int size);
 int

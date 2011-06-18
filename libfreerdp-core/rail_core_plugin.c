@@ -26,29 +26,25 @@
 
 
 #include "rail.h"
-//------------------------------------------------------------------------------
-RAIL_SESSION *
-rail_session_new(struct rdp_rdp * rdp)
-{
-	RAIL_SESSION * self;
 
-	self = (RAIL_SESSION *) xmalloc(sizeof(RAIL_SESSION));
-	if (self != NULL)
-	{
-		memset(self, 0, sizeof(RAIL_SESSION));
-		self->rdp = rdp;
-		self->number_icon_caches = 3;
-		self->number_icon_cache_entries = 17;
-	}
-	return self;
-}
 //------------------------------------------------------------------------------
-void
-rail_session_free(RAIL_SESSION * rail_session)
+/*
+ * Used for opening channel and sent to core channel pointer to RAIL session.
+ *
+ * Main difference between core channels and plugin channels is time of
+ * calling plugin 'VirtualChannelEntry'.
+ * For plugin 'VirtualChannelEntry' is called when rdpInst for channel manager
+ * is not yet defined. So we can't link it with rdp session.
+ *
+ * For core virtual channels 'VirtualChannelEntry' is called when rdpInst
+ * linked with channel manager in 'freerdp_chanman_pre_connect' routine by
+ * library consumer (in UI).
+ *
+ * So on this stage all rdpInst structure already builded, so we can call
+ * core function for linking with RAIL session structure.
+ */
+int RailCoreVirtualChannelEntry(PCHANNEL_ENTRY_POINTS pEntryPoints)
 {
-	if (rail_session != NULL)
-	{
-		xfree(rail_session);
-	}
+	return 0;
 }
-//------------------------------------------------------------------------------
+
