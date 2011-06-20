@@ -31,8 +31,12 @@ rdp_in_rail_unicode_string(STREAM s, RAIL_UNICODE_STRING * string)
 {
 	in_uint16_le(s, string->length);
 
-	string->buffer = xmalloc(string->length);
-	in_uint8a(s, string->buffer, string->length);
+	string->buffer = NULL;
+	if (string->length > 0)
+	{
+		string->buffer = xmalloc(string->length);
+		in_uint8a(s, string->buffer, string->length);
+	}
 }
 //------------------------------------------------------------------------------
 static void

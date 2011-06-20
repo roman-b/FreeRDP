@@ -56,6 +56,7 @@
  * etc
  */
 
+/*Non-null terminated UNICODE string with characters in LE byte order*/
 
 typedef struct _RAIL_UNICODE_STRING
 {
@@ -153,10 +154,34 @@ typedef struct _RAIL_NOTIFY_ICON_INFO
 
 } RAIL_NOTIFY_ICON_INFO;
 
+typedef struct _RAIL_HIGHCONTRAST
+{
+	uint32 flags;
+	RAIL_UNICODE_STRING color_scheme;
+} RAIL_HIGHCONTRAST;
+
+typedef struct _RAIL_CLIENT_SYSPARAM
+{
+	uint32 type;
+
+	union
+	{
+		uint8 full_window_drag_enabled;
+		uint8 menu_access_key_always_underlined;
+		uint8 keyboard_for_user_prefered;
+		uint8 left_right_mouse_buttons_swapped;
+		RAIL_RECT_16 work_area;
+		RAIL_RECT_16 display_resolution;
+		RAIL_RECT_16 taskbar_size; // TODO: Maybe this is taskbar position?
+		RAIL_HIGHCONTRAST high_contrast_system_info;
+
+	} value;
+} RAIL_CLIENT_SYSPARAM;
+
+
 typedef struct _RAIL_VCHANNEL_SENDER
 {
 	void* sender_object;
-
 	void  (*send_rail_vchannel_data)(void* session, void* data, size_t length);
 
 } RAIL_VCHANNEL_SENDER;

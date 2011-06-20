@@ -27,18 +27,64 @@
 
 #include "rail.h"
 
+/*
+ * RAIL_PDU_HEADER
+ * begin
+ *   orderType   = 2 bytes
+ *   orderLength = 2 bytes
+   end
+ */
+
+static size_t RAIL_PDU_HEADER_SIZE = 4;
+
+//------------------------------------------------------------------------------
+void*
+rail_alloc_order_data(
+		size_t length
+		)
+{
+	uint8 * order_start = xmalloc(length + RAIL_PDU_HEADER_SIZE);
+	return (order_start + RAIL_PDU_HEADER_SIZE);
+}
+//------------------------------------------------------------------------------
+size_t
+rail_get_serialized_data_length_in_stream(
+		STREAM s
+		)
+{
+	uint8 * begin = s->data;
+	uint8 * end   = s->p;
+
+	return (size_t)(end - begin);
+}
 //------------------------------------------------------------------------------
 // Used by 'rail_send_vchannel_' routines for sending constructed RAIL PDU to
 // the 'rail' channel
 void
-rail_send_vchannel_data(
+rail_send_vchannel_order_data(
 		RAIL_SESSION * session,
-		void* data,
-		size_t data_length)
+		uint16 order_type,
+		void*  allocated_order_data,
+		uint16 data_length
+		)
 {
+	struct stream st_stream = {0};
+	STREAM s = &st_stream;
+	uint8* header_start = ((uint8*)allocated_order_data - RAIL_PDU_HEADER_SIZE);
+
+	data_length += RAIL_PDU_HEADER_SIZE;
+
+	stream_init_by_allocated_data(s, header_start, RAIL_PDU_HEADER_SIZE);
+
+	out_uint16_le(s, order_type);
+	out_uint16_le(s, data_length);
+
 	session->channel_sender.send_rail_vchannel_data(
 			session->channel_sender.sender_object,
-			data, data_length);
+			header_start, data_length);
+
+	// In there we free memory which we allocated in rail_alloc_order_data(..)
+	xfree(header_start);
 }
 //------------------------------------------------------------------------------
 /*
@@ -48,9 +94,22 @@ rail_send_vchannel_data(
  * with the Handshake PDU.
  */
 void
-rail_send_vchannel_handshake_order()
+rail_send_vchannel_handshake_order(
+		RAIL_SESSION * session,
+		uint32 build_number
+		)
 {
-	//TS_RAIL_ORDER_HANDSHAKE
+	struct stream st_stream = {0};
+	STREAM s = &st_stream;
+	uint16 data_length = 4;
+	void*  data = rail_alloc_order_data(data_length);
+
+	stream_init_by_allocated_data(s, data, data_length);
+
+	out_uint32_le(s, build_number);
+
+	rail_send_vchannel_order_data(session, RDP_RAIL_ORDER_HANDSHAKE, data,
+			data_length);
 }
 //------------------------------------------------------------------------------
 /*
@@ -58,9 +117,24 @@ rail_send_vchannel_handshake_order()
  * when a local RAIL window on the client is activated or deactivated.
  */
 void
-rail_send_vchannel_activate_order()
+rail_send_vchannel_activate_order(
+		RAIL_SESSION * session,
+		uint32 window_id,
+		uint8 enabled
+		)
 {
-	//TS_RAIL_ORDER_ACTIVATE
+	struct stream st_stream = {0};
+	STREAM s = &st_stream;
+	uint16 data_length = 5;
+	void*  data = rail_alloc_order_data(data_length);
+
+	stream_init_by_allocated_data(s, data, data_length);
+
+	out_uint32_le(s, window_id);
+	out_uint8(s, enabled);
+
+	rail_send_vchannel_order_data(session, RDP_RAIL_ORDER_ACTIVATE, data,
+			data_length);
 }
 //------------------------------------------------------------------------------
 /*
@@ -117,14 +191,116 @@ rail_send_vchannel_exec_order()
 //	//sec_send(rdp->sec, s, rdp->settings->encryption ? SEC_ENCRYPT : 0);
 }
 //------------------------------------------------------------------------------
+size_t get_sysparam_size_in_rdp_stream(RAIL_CLIENT_SYSPARAM * sysparam)
+{
+	switch (sysparam->type)
+	{
+	case SPI_SETDRAGFULLWINDOWS: {return 1;}
+	case SPI_SETKEYBOARDCUES:    {return 1;}
+	case SPI_SETKEYBOARDPREF:    {return 1;}
+	case SPI_SETMOUSEBUTTONSWAP: {return 1;}
+	case SPI_SETWORKAREA:        {return 8;}
+	case RAIL_SPI_DISPLAYCHANGE: {return 8;}
+	case RAIL_SPI_TASKBARPOS:    {return 8;}
+	case SPI_SETHIGHCONTRAST:
+		{
+			return (4 + /*Flags (4 bytes)*/
+					4 + /*ColorSchemeLength (4 bytes)*/
+					2 + /*UNICODE_STRING.cbString (2 bytes)*/
+					sysparam->value.high_contrast_system_info.color_scheme.length);
+		}
+	};
+
+	ASSERT(!"Unknown sysparam type");
+	return 0;
+}
+//------------------------------------------------------------------------------
+void out_rail_unicode_string(STREAM s, RAIL_UNICODE_STRING* string)
+{
+	out_uint16_le(s, string->length);
+	if (string->length > 0)
+	{
+		out_uint8a(s, string->buffer, string->length);
+	}
+}
+//------------------------------------------------------------------------------
+void out_rail_rect_16(STREAM s, RAIL_RECT_16* rect)
+{
+	out_uint16_le(s, rect->left); /*Left*/
+	out_uint16_le(s, rect->top); /*Top*/
+	out_uint16_le(s, rect->right); /*Right*/
+	out_uint16_le(s, rect->bottom); /*Bottom*/
+}
+//------------------------------------------------------------------------------
 /*
  * Indicates a Client System Parameters Update PDU from client to server to
  * synchronize system parameters on the server with those on the client.
  */
 void
-rail_send_vchannel_client_sysparam_update_order()
+rail_send_vchannel_client_sysparam_update_order(
+		RAIL_SESSION * session,
+		RAIL_CLIENT_SYSPARAM* sysparam
+		)
 {
-	//TS_RAIL_ORDER_SYSPARAM
+	struct stream st_stream = {0};
+	STREAM s = &st_stream;
+	size_t data_length = 4; /*SystemParam (4 bytes)*/
+	void*  data = 0;
+
+	data_length += get_sysparam_size_in_rdp_stream(sysparam);
+
+	data = rail_alloc_order_data(data_length);
+	stream_init_by_allocated_data(s, data, data_length);
+
+	out_uint32_le(s, sysparam->type);
+
+	switch (sysparam->type)
+	{
+	case SPI_SETDRAGFULLWINDOWS:
+		out_uint8(s, sysparam->value.full_window_drag_enabled);
+		break;
+
+	case SPI_SETKEYBOARDCUES:
+		out_uint8(s, sysparam->value.menu_access_key_always_underlined);
+		break;
+
+	case SPI_SETKEYBOARDPREF:
+		out_uint8(s, sysparam->value.keyboard_for_user_prefered);
+		break;
+
+	case SPI_SETMOUSEBUTTONSWAP:
+		out_uint8(s, sysparam->value.left_right_mouse_buttons_swapped);
+		break;
+
+	case SPI_SETWORKAREA:
+		out_rail_rect_16(s, &sysparam->value.work_area);
+		break;
+
+	case RAIL_SPI_DISPLAYCHANGE:
+		out_rail_rect_16(s, &sysparam->value.display_resolution);
+		break;
+
+	case RAIL_SPI_TASKBARPOS:
+		out_rail_rect_16(s, &sysparam->value.taskbar_size);
+		break;
+
+	case SPI_SETHIGHCONTRAST:
+		{
+			uint32 color_scheme_length = 2 +
+				sysparam->value.high_contrast_system_info.color_scheme.length;
+
+			out_uint32_le(s, sysparam->value.high_contrast_system_info.flags);
+			out_uint32_le(s, color_scheme_length);
+			out_rail_unicode_string(s,
+					&sysparam->value.high_contrast_system_info.color_scheme);
+			break;
+		}
+	default:
+		ASSERT(!"Unknown sysparam type");
+	};
+
+	rail_send_vchannel_order_data(session, RDP_RAIL_ORDER_SYSPARAM, data,
+			data_length);
 }
 //------------------------------------------------------------------------------
 /*
