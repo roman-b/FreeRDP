@@ -58,6 +58,23 @@ rail_get_serialized_data_length_in_stream(
 	return (size_t)(end - begin);
 }
 //------------------------------------------------------------------------------
+void out_rail_unicode_string(STREAM s, RAIL_UNICODE_STRING* string)
+{
+	out_uint16_le(s, string->length);
+	if (string->length > 0)
+	{
+		out_uint8a(s, string->buffer, string->length);
+	}
+}
+//------------------------------------------------------------------------------
+void out_rail_rect_16(STREAM s, RAIL_RECT_16* rect)
+{
+	out_uint16_le(s, rect->left); /*Left*/
+	out_uint16_le(s, rect->top); /*Top*/
+	out_uint16_le(s, rect->right); /*Right*/
+	out_uint16_le(s, rect->bottom); /*Bottom*/
+}
+//------------------------------------------------------------------------------
 // Used by 'rail_send_vchannel_' routines for sending constructed RAIL PDU to
 // the 'rail' channel
 void
@@ -142,53 +159,45 @@ rail_send_vchannel_activate_order(
  * remote application launch on the server.
  * */
 void
-rail_send_vchannel_exec_order()
+rail_send_vchannel_exec_order(
+		RAIL_SESSION * session,
+		uint16 flags,
+		RAIL_UNICODE_STRING* exe_or_file,
+		RAIL_UNICODE_STRING* working_directory,
+		RAIL_UNICODE_STRING* arguments
+		)
 {
-//	//TS_RAIL_ORDER_EXEC
-//
-//	STREAM s;
-//	uint16 flags;
-//	char *arguments;
-//	char *application_name;
-//	char *working_directory;
-//	size_t arguments_len;
-//	size_t application_name_len;
-//	size_t working_directory_len;
-//
-//	/* Still lacking proper packet initialization */
-//	s = NULL;
-//	//rdp_out_rail_pdu_header(s, RDP_RAIL_ORDER_EXEC, 12);
-//
-//	s = stream_new(12);
-//
-//	out_uint16_le(s, (uint16)RDP_RAIL_ORDER_EXEC);
-//	out_uint16_le(s, (uint16)12);
-//
-//
-//
-//	application_name = freerdp_uniconv_out(rdp->uniconv,
-//			rdp->settings->rail_exe_or_file, &application_name_len);
-//	working_directory = freerdp_uniconv_out(rdp->uniconv,
-//			rdp->settings->rail_working_directory, &working_directory_len);
-//	arguments = freerdp_uniconv_out(rdp->uniconv,
-//			rdp->settings->rail_arguments, &arguments_len);
-//
-//	flags = RAIL_EXEC_FLAG_EXPAND_WORKINGDIRECTORY | RAIL_EXEC_FLAG_EXPAND_ARGUMENTS;
-//
-//	out_uint16_le(s, flags); /* flags */
-//	out_uint16_le(s, application_name_len); /* ExeOrFileLength */
-//	out_uint16_le(s, working_directory_len); /* WorkingDirLength */
-//	out_uint16_le(s, arguments_len); /* ArgumentsLength */
-//	out_uint8a(s, application_name, application_name_len + 2); /* ExeOrFile */
-//	out_uint8a(s, working_directory, working_directory_len + 2); /* WorkingDir */
-//	out_uint8a(s, arguments, arguments_len + 2); /* Arguments */
-//
-//	xfree(application_name);
-//	xfree(working_directory);
-//	xfree(arguments);
-//
-//	s_mark_end(s);
-//	//sec_send(rdp->sec, s, rdp->settings->encryption ? SEC_ENCRYPT : 0);
+	struct stream st_stream = {0};
+	STREAM s = &st_stream;
+
+	uint16 exe_or_file_length        = 2 + exe_or_file->length;
+	uint16 working_directory_length  = 2 + working_directory->length;
+	uint16 arguments_length          = 2 + arguments->length;
+
+	size_t data_length =
+		2 +                         /*Flags (2 bytes)*/
+		2 +                         /*ExeOrFileLength (2 bytes)*/
+		2 +                         /*WorkingDirLength (2 bytes)*/
+		2 +                         /*ArgumentsLen (2 bytes)*/
+		exe_or_file_length +        /*ExeOrFile (variable)*/
+		working_directory_length +  /*WorkingDir (variable)*/
+		arguments_length;           /*Arguments (variable):*/
+
+	void*  data = rail_alloc_order_data(data_length);
+
+	stream_init_by_allocated_data(s, data, data_length);
+
+	out_uint16_le(s, flags);
+	out_uint16_le(s, exe_or_file_length);
+	out_uint16_le(s, working_directory_length);
+	out_uint16_le(s, arguments_length);
+
+	out_rail_unicode_string(s, exe_or_file);
+	out_rail_unicode_string(s, working_directory);
+	out_rail_unicode_string(s, arguments);
+
+	rail_send_vchannel_order_data(session, RDP_RAIL_ORDER_EXEC, data,
+			data_length);
 }
 //------------------------------------------------------------------------------
 size_t get_sysparam_size_in_rdp_stream(RAIL_CLIENT_SYSPARAM * sysparam)
@@ -213,23 +222,6 @@ size_t get_sysparam_size_in_rdp_stream(RAIL_CLIENT_SYSPARAM * sysparam)
 
 	ASSERT(!"Unknown sysparam type");
 	return 0;
-}
-//------------------------------------------------------------------------------
-void out_rail_unicode_string(STREAM s, RAIL_UNICODE_STRING* string)
-{
-	out_uint16_le(s, string->length);
-	if (string->length > 0)
-	{
-		out_uint8a(s, string->buffer, string->length);
-	}
-}
-//------------------------------------------------------------------------------
-void out_rail_rect_16(STREAM s, RAIL_RECT_16* rect)
-{
-	out_uint16_le(s, rect->left); /*Left*/
-	out_uint16_le(s, rect->top); /*Top*/
-	out_uint16_le(s, rect->right); /*Right*/
-	out_uint16_le(s, rect->bottom); /*Bottom*/
 }
 //------------------------------------------------------------------------------
 /*
@@ -309,9 +301,24 @@ rail_send_vchannel_client_sysparam_update_order(
  * window, such as minimize or maximize.
  */
 void
-rail_send_vchannel_syscommand_order()
+rail_send_vchannel_syscommand_order(
+		RAIL_SESSION * session,
+		uint32 window_id,
+		uint16 command
+		)
 {
-	//TS_RAIL_ORDER_SYSCOMMAND
+	struct stream st_stream = {0};
+	STREAM s = &st_stream;
+	uint16 data_length = 4 + 2;
+	void*  data = rail_alloc_order_data(data_length);
+
+	stream_init_by_allocated_data(s, data, data_length);
+
+	out_uint32_le(s, window_id);
+	out_uint16_le(s, command);
+
+	rail_send_vchannel_order_data(session, RDP_RAIL_ORDER_SYSCOMMAND, data,
+			data_length);
 }
 //------------------------------------------------------------------------------
 /*
@@ -321,9 +328,26 @@ rail_send_vchannel_syscommand_order()
  * the Notify Event PDU.
  * */
 void
-rail_send_vchannel_notify_event_order()
+rail_send_vchannel_notify_event_order(
+		RAIL_SESSION * session,
+		uint32 window_id,
+		uint32 notify_icon_id,
+		uint32 message
+		)
 {
-	//TS_RAIL_ORDER_NOTIFY_EVENT
+	struct stream st_stream = {0};
+	STREAM s = &st_stream;
+	uint16 data_length = 4 * 3;
+	void*  data = rail_alloc_order_data(data_length);
+
+	stream_init_by_allocated_data(s, data, data_length);
+
+	out_uint32_le(s, window_id);
+	out_uint32_le(s, notify_icon_id);
+	out_uint32_le(s, message);
+
+	rail_send_vchannel_order_data(session, RDP_RAIL_ORDER_NOTIFY_EVENT, data,
+			data_length);
 }
 //------------------------------------------------------------------------------
 /*
@@ -332,19 +356,51 @@ rail_send_vchannel_notify_event_order()
  * locally moved or resized window's position to the server by using this packet.
  * The server uses this information to reposition its window.*/
 void
-rail_send_vchannel_windowmove_order()
+rail_send_vchannel_client_windowmove_order(
+		RAIL_SESSION * session,
+		uint32 window_id,
+		RAIL_RECT_16 * new_position
+		)
 {
-	// TS_RAIL_ORDER_WINDOWMOVE
+	struct stream st_stream = {0};
+	STREAM s = &st_stream;
+	uint16 data_length = 4 + 2 * 4;
+	void*  data = rail_alloc_order_data(data_length);
+
+	stream_init_by_allocated_data(s, data, data_length);
+
+	out_uint32_le(s, window_id);
+	out_uint16_le(s, new_position->left);
+	out_uint16_le(s, new_position->top);
+	out_uint16_le(s, new_position->right);
+	out_uint16_le(s, new_position->bottom);
+
+	rail_send_vchannel_order_data(session, RDP_RAIL_ORDER_WINDOWMOVE, data,
+			data_length);
 }
+
 //------------------------------------------------------------------------------
 /*
  * The Client Information PDU is sent from client to server and contains
  * information about RAIL client state and features supported by the client.
  * */
 void
-rail_send_vchannel_client_information_order()
+rail_send_vchannel_client_information_order(
+		RAIL_SESSION * session,
+		uint32 flags
+		)
 {
-	// TS_RAIL_ORDER_CLIENTSTATUS
+	struct stream st_stream = {0};
+	STREAM s = &st_stream;
+	uint16 data_length = 4;
+	void*  data = rail_alloc_order_data(data_length);
+
+	stream_init_by_allocated_data(s, data, data_length);
+
+	out_uint32_le(s, flags);
+
+	rail_send_vchannel_order_data(session, RDP_RAIL_ORDER_CLIENTSTATUS, data,
+			data_length);
 }
 //------------------------------------------------------------------------------
 /*
@@ -354,9 +410,26 @@ rail_send_vchannel_client_information_order()
  * the System menu PDU.
  */
 void
-rail_send_vchannel_client_system_menu_order()
+rail_send_vchannel_client_system_menu_order(
+		RAIL_SESSION * session,
+		uint32 window_id,
+		uint16 left,
+		uint16 top
+		)
 {
-	// TS_RAIL_ORDER_SYSMENU
+	struct stream st_stream = {0};
+	STREAM s = &st_stream;
+	uint16 data_length = 4 + 2 * 2;
+	void*  data = rail_alloc_order_data(data_length);
+
+	stream_init_by_allocated_data(s, data, data_length);
+
+	out_uint32_le(s, window_id);
+	out_uint16_le(s, left);
+	out_uint16_le(s, top);
+
+	rail_send_vchannel_order_data(session, RDP_RAIL_ORDER_SYSMENU, data,
+			data_length);
 }
 //------------------------------------------------------------------------------
 /*
@@ -367,9 +440,22 @@ rail_send_vchannel_client_system_menu_order()
  * This PDU contains information about the language bar status.
  * */
 void
-rail_send_vchannel_client_langbar_information_order()
+rail_send_vchannel_client_langbar_information_order(
+		RAIL_SESSION * session,
+		uint32 langbar_status
+		)
 {
-	// TS_RAIL_ORDER_LANGBARINFO
+	struct stream st_stream = {0};
+	STREAM s = &st_stream;
+	uint16 data_length = 4;
+	void*  data = rail_alloc_order_data(data_length);
+
+	stream_init_by_allocated_data(s, data, data_length);
+
+	out_uint32_le(s, langbar_status);
+
+	rail_send_vchannel_order_data(session, RDP_RAIL_ORDER_LANGBARINFO, data,
+			data_length);
 }
 //------------------------------------------------------------------------------
 /*
@@ -378,14 +464,27 @@ rail_send_vchannel_client_langbar_information_order()
  * that the window SHOULD <15> have on the client.
  * */
 void
-rail_send_vchannel_get_appid_req_order()
+rail_send_vchannel_get_appid_req_order(
+		RAIL_SESSION * session,
+		uint32 window_id
+		)
 {
-	// TS_RAIL_ORDER_GET_APPID_REQ
+	struct stream st_stream = {0};
+	STREAM s = &st_stream;
+	uint16 data_length = 4;
+	void*  data = rail_alloc_order_data(data_length);
+
+	stream_init_by_allocated_data(s, data, data_length);
+
+	out_uint32_le(s, window_id);
+
+	rail_send_vchannel_order_data(session, RDP_RAIL_ORDER_GET_APPID_REQ, data,
+			data_length);
 }
 //------------------------------------------------------------------------------
 /*
  * Look at rail_send_vchannel_handshake_order(...)
- * */
+ */
 void
 rail_process_vchannel_handshake_order()
 {

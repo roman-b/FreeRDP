@@ -26,6 +26,37 @@
 
 
 #include "rail.h"
+
+
+//  EXAMPLE for uniconv conversation
+//	char *application_name;
+//	char *working_directory;
+//	size_t arguments_len;
+//	size_t application_name_len;
+//	size_t working_directory_len;
+//
+//	/* Still lacking proper packet initialization */
+//	s = NULL;
+//	//rdp_out_rail_pdu_header(s, RDP_RAIL_ORDER_EXEC, 12);
+//
+//	s = stream_new(12);
+//
+//	out_uint16_le(s, (uint16)RDP_RAIL_ORDER_EXEC);
+//	out_uint16_le(s, (uint16)12);
+//
+//
+//
+//	application_name = freerdp_uniconv_out(rdp->uniconv,
+//			rdp->settings->rail_exe_or_file, &application_name_len);
+//	working_directory = freerdp_uniconv_out(rdp->uniconv,
+//			rdp->settings->rail_working_directory, &working_directory_len);
+//	arguments = freerdp_uniconv_out(rdp->uniconv,
+//			rdp->settings->rail_arguments, &arguments_len);
+//
+//	flags = RAIL_EXEC_FLAG_EXPAND_WORKINGDIRECTORY | RAIL_EXEC_FLAG_EXPAND_ARGUMENTS;
+//
+
+
 //------------------------------------------------------------------------------
 RAIL_SESSION *
 rail_session_new(struct rdp_rdp * rdp)
