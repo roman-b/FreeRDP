@@ -26,6 +26,7 @@
 #include "chan.h"
 #include "ext.h"
 #include "rail.h"
+#include "rail_core_plugin.h"
 #include <freerdp/freerdp.h>
 #include <freerdp/utils/memory.h>
 

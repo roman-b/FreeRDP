@@ -26,8 +26,8 @@
 #include "stream.h"
 
 //------------------------------------------------------------------------------
-static void
-rdp_in_rail_unicode_string(STREAM s, RAIL_UNICODE_STRING * string)
+void
+in_rail_unicode_string(STREAM s, RAIL_UNICODE_STRING * string)
 {
 	in_uint16_le(s, string->length);
 
@@ -39,8 +39,19 @@ rdp_in_rail_unicode_string(STREAM s, RAIL_UNICODE_STRING * string)
 	}
 }
 //------------------------------------------------------------------------------
-static void
-rdp_in_rail_rect_16(STREAM s, RAIL_RECT_16 * rect)
+void
+free_rail_string(RAIL_UNICODE_STRING * string)
+{
+	if (string->buffer != NULL)
+	{
+		xfree(string->buffer);
+		string->buffer = NULL;
+		string->length = 0;
+	}
+}
+//------------------------------------------------------------------------------
+void
+in_rail_rect_16(STREAM s, RAIL_RECT_16 * rect)
 {
 	in_uint16_le(s, rect->left); /*Left*/
 	in_uint16_le(s, rect->top); /*Top*/
@@ -49,16 +60,16 @@ rdp_in_rail_rect_16(STREAM s, RAIL_RECT_16 * rect)
 }
 //------------------------------------------------------------------------------
 static void
-rdp_in_rail_cached_icon_info(STREAM s, RAIL_CACHED_ICON_INFO * cached_info)
+in_rail_cached_icon_info(STREAM s, RAIL_CACHED_ICON_INFO * cached_info)
 {
 	in_uint16_le(s, cached_info->cache_entry_id); /*CacheEntry*/
 	in_uint8(s, cached_info->cache_id); /*CacheId*/
 }
 //------------------------------------------------------------------------------
 static void
-rdp_in_rail_icon_info(STREAM s, RAIL_ICON_INFO * icon_info)
+in_rail_icon_info(STREAM s, RAIL_ICON_INFO * icon_info)
 {
-	rdp_in_rail_cached_icon_info(s, &icon_info->cache_info);
+	in_rail_cached_icon_info(s, &icon_info->cache_info);
 
 	in_uint8(s, icon_info->bpp); /*Bpp*/
 	in_uint16_le(s, icon_info->width); /*Width*/
@@ -126,7 +137,7 @@ process_windowing_window_information(RAIL_SESSION* rail_session, STREAM s,
 	{
 		RAIL_CACHED_ICON_INFO cached_info = {0};
 
-		rdp_in_rail_cached_icon_info(s, &cached_info);
+		in_rail_cached_icon_info(s, &cached_info);
 
 		/*TODO:
 		 * call rail_handle_window_cached_icon(window_id,
@@ -142,7 +153,7 @@ process_windowing_window_information(RAIL_SESSION* rail_session, STREAM s,
 	{
 		RAIL_ICON_INFO icon_info = {.cache_info = {0}, 0};
 
-		rdp_in_rail_icon_info(s, &icon_info);
+		in_rail_icon_info(s, &icon_info);
 
 		/*TODO:
 		 * call rail_handle_window_icon(
@@ -184,7 +195,7 @@ process_windowing_window_information(RAIL_SESSION* rail_session, STREAM s,
 	window_info.title_info.buffer = NULL;
 	if (fields_present_flags & WINDOW_ORDER_FIELD_TITLE)
 	{
-		rdp_in_rail_unicode_string(s, &window_info.title_info);
+		in_rail_unicode_string(s, &window_info.title_info);
 	}
 
 	/* ClientOffsetX/ClientOffsetY */
@@ -259,7 +270,7 @@ process_windowing_window_information(RAIL_SESSION* rail_session, STREAM s,
 
 		for (i = 0; i < window_info.window_rects_number; i++)
 		{
-			rdp_in_rail_rect_16(s, &window_info.window_rects[i]);
+			in_rail_rect_16(s, &window_info.window_rects[i]);
 		}
 	}
 
@@ -285,7 +296,7 @@ process_windowing_window_information(RAIL_SESSION* rail_session, STREAM s,
 
 		for (i = 0; i < window_info.visibility_rects_number; i++)
 		{
-			rdp_in_rail_rect_16(s, &window_info.visibility_rects[i]);
+			in_rail_rect_16(s, &window_info.visibility_rects[i]);
 		}
 	}
 
@@ -299,7 +310,7 @@ process_windowing_window_information(RAIL_SESSION* rail_session, STREAM s,
 }
 //------------------------------------------------------------------------------
 static void
-rdp_in_rail_notify_icon_infotip(
+in_rail_notify_icon_infotip(
 		STREAM s,
 		RAIL_NOTIFY_ICON_INFOTIP * icon_infotip
 		)
@@ -307,8 +318,8 @@ rdp_in_rail_notify_icon_infotip(
 	in_uint32_le(s, icon_infotip->timeout); /*Timeout*/
 	in_uint32_le(s, icon_infotip->info_flags); /*InfoFlags*/
 
-	rdp_in_rail_unicode_string(s, &icon_infotip->info_tip_text);/*InfoTipText*/
-	rdp_in_rail_unicode_string(s, &icon_infotip->title);/*Title*/
+	in_rail_unicode_string(s, &icon_infotip->info_tip_text);/*InfoTipText*/
+	in_rail_unicode_string(s, &icon_infotip->title);/*Title*/
 }
 //------------------------------------------------------------------------------
 /* Process a Notification Icon Information orders*/
@@ -349,13 +360,13 @@ process_windowing_notification_icon_information(
 	/*ToolTip*/
 	if (fields_present_flags &  WINDOW_ORDER_FIELD_NOTIFY_TIP)
 	{
-		rdp_in_rail_unicode_string(s, &notify_icon_info.tool_tip);
+		in_rail_unicode_string(s, &notify_icon_info.tool_tip);
 	}
 
 	/*InfoTip*/
 	if (fields_present_flags &  WINDOW_ORDER_FIELD_NOTIFY_INFO_TIP)
 	{
-		rdp_in_rail_notify_icon_infotip(s, &notify_icon_info.info_tip);
+		in_rail_notify_icon_infotip(s, &notify_icon_info.info_tip);
 	}
 
 	/*State*/
@@ -367,13 +378,13 @@ process_windowing_notification_icon_information(
 	/*Icon*/
 	if (fields_present_flags &  WINDOW_ORDER_ICON)
 	{
-		rdp_in_rail_icon_info(s, &notify_icon_info.icon);
+		in_rail_icon_info(s, &notify_icon_info.icon);
 	}
 
 	/*CachedIcon*/
 	if (fields_present_flags &  WINDOW_ORDER_ICON)
 	{
-		rdp_in_rail_cached_icon_info(s, &notify_icon_info.cached_icon);
+		in_rail_cached_icon_info(s, &notify_icon_info.cached_icon);
 	}
 
 	/*TODO:

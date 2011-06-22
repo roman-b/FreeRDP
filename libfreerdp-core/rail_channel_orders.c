@@ -24,8 +24,8 @@
 #include <freerdp/rdpset.h>
 #include <freerdp/utils/memory.h>
 
-
 #include "rail.h"
+
 
 /*
  * RAIL_PDU_HEADER
@@ -45,17 +45,6 @@ rail_alloc_order_data(
 {
 	uint8 * order_start = xmalloc(length + RAIL_PDU_HEADER_SIZE);
 	return (order_start + RAIL_PDU_HEADER_SIZE);
-}
-//------------------------------------------------------------------------------
-size_t
-rail_get_serialized_data_length_in_stream(
-		STREAM s
-		)
-{
-	uint8 * begin = s->data;
-	uint8 * end   = s->p;
-
-	return (size_t)(end - begin);
 }
 //------------------------------------------------------------------------------
 void out_rail_unicode_string(STREAM s, RAIL_UNICODE_STRING* string)
@@ -486,9 +475,15 @@ rail_send_vchannel_get_appid_req_order(
  * Look at rail_send_vchannel_handshake_order(...)
  */
 void
-rail_process_vchannel_handshake_order()
+rail_process_vchannel_handshake_order(
+		RAIL_SESSION* session,
+		STREAM s
+		)
 {
-	// RDP_RAIL_ORDER_HANDSHAKE
+	uint32 build_number = 0;
+
+	in_uint32_le(s, build_number);
+	// rail_handle_server_hadshake(session, build_number);
 }
 //------------------------------------------------------------------------------
 /*
@@ -497,9 +492,26 @@ rail_process_vchannel_handshake_order()
  * attempt to launch the requested executable.
  */
 void
-rail_process_vchannel_exec_result_order()
+rail_process_vchannel_exec_result_order(
+		RAIL_SESSION* session,
+		STREAM s
+		)
 {
-	// RDP_RAIL_ORDER_EXEC_RESULT
+	uint16 flags = 0;
+	uint16 exec_result = 0;
+	uint32 raw_result = 0;
+	uint16 exe_or_file_length = 0;
+	RAIL_UNICODE_STRING exe_or_file = {0};
+
+	in_uint16_le(s, flags); /*Flags (2 bytes)*/
+	in_uint16_le(s, exec_result); /*ExecResult (2 bytes)*/
+	in_uint32_le(s, raw_result); /*RawResult (4 bytes)*/
+	in_uint8s(s, 2);  /*Padding (2 bytes)*/
+	in_uint16_le(s, exe_or_file_length); /*ExeOrFileLength (2 bytes)*/
+	in_rail_unicode_string(s, &exe_or_file); /*ExeOrFile (variable)*/
+
+	// rail_handle_exec_result(session, flags, exec_result, raw_result,);
+	// free_rail_string(&exe_or_file);
 }
 //------------------------------------------------------------------------------
 /*
@@ -507,9 +519,31 @@ rail_process_vchannel_exec_result_order()
  * synchronize system parameters on the client with those on the server.
  */
 void
-rail_process_vchannel_server_sysparam_update_order()
+rail_process_vchannel_server_sysparam_update_order(
+		RAIL_SESSION* session,
+		STREAM s
+		)
 {
-	// RDP_RAIL_ORDER_SYSPARAM
+	RAIL_SERVER_SYSPARAM sysparam = {0};
+
+	in_uint32_le(s, sysparam.type);
+
+	switch (sysparam.type)
+	{
+	case SPI_SETSCREENSAVEACTIVE:
+		in_uint8(s, sysparam.value.screen_saver_enabled);
+		break;
+
+	case SPI_SETSCREENSAVESECURE:
+		in_uint8(s, sysparam.value.screen_saver_lock_enabled);
+		break;
+
+	default:
+		ASSERT(!"Undocumented RAIL server sysparam type");
+		break;
+	};
+
+	// rail_handle_server_sysparam(session, sysparam);
 }
 //------------------------------------------------------------------------------
 /*
@@ -525,9 +559,25 @@ rail_process_vchannel_server_sysparam_update_order()
  *
  */
 void
-rail_process_vchannel_server_movesize_order()
+rail_process_vchannel_server_movesize_order(
+		RAIL_SESSION* session,
+		STREAM s
+		)
 {
-	// RDP_RAIL_ORDER_LOCALMOVESIZE
+	uint32 window_id = 0;
+	uint16 move_size_started = 0;
+	uint16 move_size_type = 0;
+	uint16 pos_x = 0;
+	uint16 pos_y = 0;
+
+	in_uint32_le(s, window_id);
+	in_uint16_le(s, move_size_started);
+	in_uint16_le(s, move_size_type);
+	in_uint16_le(s, pos_x);
+	in_uint16_le(s, pos_y);
+
+	// rail_handle_server_movesize(session, window_id, move_size_started,
+	//    move_size_type, pos_x, pos_y);
 }
 //------------------------------------------------------------------------------
 /*
@@ -537,18 +587,50 @@ rail_process_vchannel_server_movesize_order()
  * which the window can be moved or sized.
  */
 void
-rail_process_vchannel_server_minmax_info_order()
+rail_process_vchannel_server_minmax_info_order(
+		RAIL_SESSION* session,
+		STREAM s
+		)
 {
-	// RDP_RAIL_ORDER_MINMAXINFO
+	uint32 window_id = 0;
+	uint16 max_width = 0;
+	uint16 max_height = 0;
+	uint16 max_pos_x = 0;
+	uint16 max_pos_y = 0;
+	uint16 min_track_width = 0;
+	uint16 min_track_height = 0;
+	uint16 max_track_width = 0;
+	uint16 max_track_height = 0;
+
+	in_uint32_le(s, window_id);
+	in_uint16_le(s, max_width);
+	in_uint16_le(s, max_height);
+	in_uint16_le(s, max_pos_x);
+	in_uint16_le(s, max_pos_y);
+	in_uint16_le(s, min_track_width);
+	in_uint16_le(s, min_track_height);
+	in_uint16_le(s, max_track_width);
+	in_uint16_le(s, max_track_height);
+
+	// rail_handle_server_minmax_info(session, window_id, max_width,
+	//    max_height, max_pos_x, max_pos_y, min_track_width, min_track_height,
+	//    max_track_width, max_track_height);
 }
 //------------------------------------------------------------------------------
 /*
  *The Language Bar Information PDU is used to set the language bar status.
  */
 void
-rail_process_vchannel_server_langbar_info_order()
+rail_process_vchannel_server_langbar_info_order(
+		RAIL_SESSION* session,
+		STREAM s
+		)
 {
-	// RDP_RAIL_ORDER_LANGBARINFO
+	uint32 langbar_status = 0;
+
+	in_uint32_le(s, langbar_status);
+
+	// rail_handle_server_langbar_info(session, langbar_status);
 }
 //------------------------------------------------------------------------------
 /*
@@ -558,18 +640,39 @@ rail_process_vchannel_server_langbar_info_order()
  * SHOULD have on the client. The client MAY ignore this PDU.
  */
 void
-rail_process_vchannel_server_get_appid_resp_order()
+rail_process_vchannel_server_get_appid_resp_order(
+		RAIL_SESSION* session,
+		STREAM s
+		)
 {
-	// RDP_RAIL_ORDER_GET_APPID_RESP
+	uint32 window_id = 0;
+	RAIL_UNICODE_STRING app_id = {0};
+
+	app_id.length = 256;
+	app_id.buffer = xmalloc(app_id.length);
+
+	in_uint32_le(s, window_id);
+	in_uint8a(s, app_id.buffer, app_id.length);
+
+	// rail_handle_server_get_app_resp(session, window_id, app_id);
+	// free_rail_string(&app_id);
 }
 //------------------------------------------------------------------------------
 void
-rail_channel_process_received_pdu(STREAM s)
+rail_channel_process_received_data(
+		RAIL_SESSION * session,
+		void*  data,
+		size_t length
+		)
 {
+	struct stream st_stream = {0};
+	STREAM s = &st_stream;
 	uint16 order_type = 0;
 	uint16 order_length = 0;
 
-	out_uint16_le(s, order_type); /* orderType */
+	stream_init_by_allocated_data(s, data, length);
+
+	out_uint16_le(s, order_type);   /* orderType */
 	out_uint16_le(s, order_length); /* orderLength */
 
 	//TODO: ASSERT((orderLength - 4) <= ((uint8*)s->p - (uint8*)s->data) );
@@ -577,95 +680,26 @@ rail_channel_process_received_pdu(STREAM s)
 	switch (order_type)
 	{
 	case RDP_RAIL_ORDER_HANDSHAKE:
+		rail_process_vchannel_handshake_order(session, s);
 		break;
 	case RDP_RAIL_ORDER_EXEC_RESULT:
+		rail_process_vchannel_exec_result_order(session, s);
 		break;
 	case RDP_RAIL_ORDER_SYSPARAM:
+		rail_process_vchannel_server_sysparam_update_order(session, s);
 		break;
 	case RDP_RAIL_ORDER_LOCALMOVESIZE:
+		rail_process_vchannel_server_movesize_order(session, s);
 		break;
 	case RDP_RAIL_ORDER_MINMAXINFO:
+		rail_process_vchannel_server_minmax_info_order(session, s);
 		break;
 	case RDP_RAIL_ORDER_LANGBARINFO:
+		rail_process_vchannel_server_langbar_info_order(session, s);
 		break;
 	case RDP_RAIL_ORDER_GET_APPID_RESP:
-		break;
-	default:
-		ASSERT(!"Undocumented RAIL channes server PDU order_type");
+		rail_process_vchannel_server_get_appid_resp_order(session, s);
 		break;
 	}
+	ASSERT(!"Undocumented RAIL channels server PDU order_type");
 }
-
-/*
-Flow of init stage over channel;
-
-   Client notify UI about session start andgo to RAIL_ESTABLISHING state.
-
-   Client send Handshake request
-   Server send Handshake response
-   Client check Handshake response. If NOT OK - exit with specified reason
-
-   Server send Server System Parameters Update
-   Client send Client Information
-   Client send Client System Parameters Update
-   Client send Client Execute
-   Server send Server Execute Result
-   Client check Server Execute Result. If NOT OK - exit with specified reason
-
-   Client notify UI about success session establishing and go to
-   RAIL_ESTABLISHED state.
-*/
-//------------------------------------------------------------------------------
-/*For processing Capacities*/
-void
-rail_get_rail_capset(
-		RAIL_SESSION * rail_session,
-		uint32 * rail_support_level
-		)
-{
-	*rail_support_level = (RAIL_LEVEL_SUPPORTED |
-			RAIL_LEVEL_DOCKED_LANGBAR_SUPPORTED);
-}
-//------------------------------------------------------------------------------
-void
-rail_process_rail_capset(
-		RAIL_SESSION * rail_session,
-		uint32 rail_support_level
-		)
-{
-	rail_session->rail_mode_supported 		=
-		((rail_support_level & RAIL_LEVEL_SUPPORTED) ? 1 : 0);
-
-	rail_session->docked_langbar_supported	=
-		((rail_support_level & RAIL_LEVEL_DOCKED_LANGBAR_SUPPORTED) ? 1 : 0);
-}
-//------------------------------------------------------------------------------
-void
-rail_get_window_capset(
-		RAIL_SESSION * rail_session,
-		uint32 * window_support_level,
-		uint8  * number_icon_caches,
-		uint16 * number_icon_cache_entries
-		)
-{
-	*window_support_level = (WINDOW_LEVEL_SUPPORTED | WINDOW_LEVEL_SUPPORTED_EX);
-	*number_icon_caches = rail_session->number_icon_caches;
-	*number_icon_cache_entries = rail_session->number_icon_cache_entries;
-}
-//------------------------------------------------------------------------------
-void
-rail_process_window_capset(
-		RAIL_SESSION * rail_session,
-		uint32 window_support_level,
-		uint8  number_icon_caches,
-		uint16 number_icon_cache_entries
-		)
-{
-	rail_session->window_level_supported =
-			((window_support_level & WINDOW_LEVEL_SUPPORTED) ? 1 : 0);
-	rail_session->window_level_ex_supported =
-			((window_support_level & WINDOW_LEVEL_SUPPORTED_EX) ? 1 : 0);
-	rail_session->number_icon_caches = number_icon_caches;
-	rail_session->number_icon_cache_entries = number_icon_cache_entries;
-}
-//------------------------------------------------------------------------------

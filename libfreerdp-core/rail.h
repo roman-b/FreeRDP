@@ -174,9 +174,20 @@ typedef struct _RAIL_CLIENT_SYSPARAM
 		RAIL_RECT_16 display_resolution;
 		RAIL_RECT_16 taskbar_size; // TODO: Maybe this is taskbar position?
 		RAIL_HIGHCONTRAST high_contrast_system_info;
-
 	} value;
 } RAIL_CLIENT_SYSPARAM;
+
+typedef struct _RAIL_SERVER_SYSPARAM
+{
+	uint32 type;
+
+	union
+	{
+		uint8 screen_saver_enabled;
+		uint8 screen_saver_lock_enabled;
+	} value;
+} RAIL_SERVER_SYSPARAM;
+
 
 
 typedef struct _RAIL_VCHANNEL_SENDER
@@ -276,10 +287,13 @@ rail_on_channel_data_received(
 		size_t length
 		);
 
+// RAIL library internal functions
 
+void
+in_rail_unicode_string(STREAM s, RAIL_UNICODE_STRING * string);
 
-int RailCoreVirtualChannelEntry(PCHANNEL_ENTRY_POINTS pEntryPoints);
-
+void
+free_rail_string(RAIL_UNICODE_STRING * string);
 
 
 #endif	// __RAIL_H

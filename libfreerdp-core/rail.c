@@ -83,3 +83,75 @@ rail_session_free(RAIL_SESSION * rail_session)
 	}
 }
 //------------------------------------------------------------------------------
+/*For processing Capacities*/
+void
+rail_get_rail_capset(
+		RAIL_SESSION * rail_session,
+		uint32 * rail_support_level
+		)
+{
+	*rail_support_level = (RAIL_LEVEL_SUPPORTED |
+			RAIL_LEVEL_DOCKED_LANGBAR_SUPPORTED);
+}
+//------------------------------------------------------------------------------
+void
+rail_process_rail_capset(
+		RAIL_SESSION * rail_session,
+		uint32 rail_support_level
+		)
+{
+	rail_session->rail_mode_supported 		=
+		((rail_support_level & RAIL_LEVEL_SUPPORTED) ? 1 : 0);
+
+	rail_session->docked_langbar_supported	=
+		((rail_support_level & RAIL_LEVEL_DOCKED_LANGBAR_SUPPORTED) ? 1 : 0);
+}
+//------------------------------------------------------------------------------
+void
+rail_get_window_capset(
+		RAIL_SESSION * rail_session,
+		uint32 * window_support_level,
+		uint8  * number_icon_caches,
+		uint16 * number_icon_cache_entries
+		)
+{
+	*window_support_level = (WINDOW_LEVEL_SUPPORTED | WINDOW_LEVEL_SUPPORTED_EX);
+	*number_icon_caches = rail_session->number_icon_caches;
+	*number_icon_cache_entries = rail_session->number_icon_cache_entries;
+}
+//------------------------------------------------------------------------------
+void
+rail_process_window_capset(
+		RAIL_SESSION * rail_session,
+		uint32 window_support_level,
+		uint8  number_icon_caches,
+		uint16 number_icon_cache_entries
+		)
+{
+	rail_session->window_level_supported =
+			((window_support_level & WINDOW_LEVEL_SUPPORTED) ? 1 : 0);
+	rail_session->window_level_ex_supported =
+			((window_support_level & WINDOW_LEVEL_SUPPORTED_EX) ? 1 : 0);
+	rail_session->number_icon_caches = number_icon_caches;
+	rail_session->number_icon_cache_entries = number_icon_cache_entries;
+}
+//------------------------------------------------------------------------------
+/*
+Flow of init stage over channel;
+
+   Client notify UI about session start andgo to RAIL_ESTABLISHING state.
+
+   Client send Handshake request
+   Server send Handshake response
+   Client check Handshake response. If NOT OK - exit with specified reason
+
+   Server send Server System Parameters Update
+   Client send Client Information
+   Client send Client System Parameters Update
+   Client send Client Execute
+   Server send Server Execute Result
+   Client check Server Execute Result. If NOT OK - exit with specified reason
+
+   Client notify UI about success session establishing and go to
+   RAIL_ESTABLISHED state.
+*/
