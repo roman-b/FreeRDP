@@ -29,7 +29,6 @@
 #ifndef __RAIL_H
 #define	__RAIL_H
 
-#include <freerdp/vchan.h>
 #include <freerdp/constants/rail.h>
 #include "rdp.h"
 
@@ -193,13 +192,13 @@ typedef struct _RAIL_SERVER_SYSPARAM
 typedef struct _RAIL_VCHANNEL_SENDER
 {
 	void* sender_object;
-	void  (*send_rail_vchannel_data)(void* session, void* data, size_t length);
+	void  (*send_rail_vchannel_data)(void* sender_object, void* data, size_t length);
 
 } RAIL_VCHANNEL_SENDER;
 
 typedef struct _RAIL_UI_LISTENER
 {
-	void* ui_listener;
+	void* ui_listener_object;
 
     // Example event
 	void (*ui_on_rail_event1)();
@@ -259,7 +258,7 @@ rail_process_window_capset(
 		);
 
 
-/* For processing Windowing Alternate Secondary Drawing Order*/
+/* For processing Windowing Alternate Secondary Drawing Order */
 void
 rail_on_altsec_window_order_received(
 		RAIL_SESSION * rail_session,

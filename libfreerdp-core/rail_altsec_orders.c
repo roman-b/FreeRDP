@@ -382,7 +382,7 @@ process_windowing_notification_icon_information(
 	}
 
 	/*CachedIcon*/
-	if (fields_present_flags &  WINDOW_ORDER_ICON)
+	if (fields_present_flags &  WINDOW_ORDER_CACHEDICON)
 	{
 		in_rail_cached_icon_info(s, &notify_icon_info.cached_icon);
 	}

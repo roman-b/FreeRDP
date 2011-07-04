@@ -617,7 +617,13 @@ freerdp_register_core_vchannels(rdpInst * inst, rdpSet * settings)
 
 	if (settings->rail_mode_enabled)
 	{
-		inst->core_vchannels[inst->core_vchannels_number] = RailCoreVirtualChannelEntry;
+		size_t   i = inst->core_vchannels_number;
+		rdpRdp * rdp = (rdpRdp *)inst->rdp;
+		RAIL_SESSION * session = rdp->rail_session;
+
+		inst->core_vchannels[i] = RailCoreVirtualChannelEntry;
+		inst->core_vchannels_data[i] = session;
+
 		inst->core_vchannels_number++;
 	}
 }

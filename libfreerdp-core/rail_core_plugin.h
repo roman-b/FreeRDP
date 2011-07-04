@@ -30,15 +30,11 @@
 #define	__RAIL_CORE_PLUGIN_H
 
 #include <freerdp/vchan.h>
-#include <freerdp/constants/rail.h>
-#include "rdp.h"
-#include "rail.h"
 
 /*
  * RAIL virtual core plugin
  * Used for 'rail' channel creation and manipulation
  */
-
 
 int RailCoreVirtualChannelEntry(PCHANNEL_ENTRY_POINTS pEntryPoints);
 

@@ -836,7 +836,7 @@ freerdp_chanman_load_plugin(rdpChanMan * chan_man, rdpSet * settings,
 	if (freerdp_chanman_register_vchannel_entry(chan_man, settings, lib.han,
 			lib.entry, data) != 0)
 	{
-		DEBUG_CHANMAN("freerdp_chanman_load_plugin: export function call failed");
+		DEBUG_CHANMAN("freerdp_chanman_load_plugin: freerdp_chanman_register_vchannel_entry failed");
 		DLCLOSE(lib.han);
 		return 1;
 	}
@@ -886,8 +886,8 @@ freerdp_chanman_pre_connect(rdpChanMan * chan_man, rdpInst * inst)
 	/* Registering core virtual channels. */
 	for (index = 0; index < inst->core_vchannels_number; index++)
 	{
-		freerdp_chanman_register_vchannel_entry(chan_man, inst->settings,
-				NULL, inst->core_vchannels[index], NULL);
+		freerdp_chanman_register_vchannel_entry(chan_man, inst->settings, NULL,
+				inst->core_vchannels[index], inst->core_vchannels_data[index]);
 	}
 
 	for (index = 0; index < chan_man->num_libs; index++)

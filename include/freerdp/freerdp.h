@@ -159,6 +159,7 @@ struct rdp_inst
 	/*Faked core virtual channels*/
 	size_t core_vchannels_number;
 	PVIRTUALCHANNELENTRY core_vchannels[CHANNEL_MAX_COUNT];
+	void*                core_vchannels_data[CHANNEL_MAX_COUNT];
 };
 
 FREERDP_API rdpInst *

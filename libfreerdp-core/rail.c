@@ -70,6 +70,9 @@ rail_session_new(struct rdp_rdp * rdp)
 		self->rdp = rdp;
 		self->number_icon_caches = 3;
 		self->number_icon_cache_entries = 17;
+
+		self->channel_sender.sender_object = NULL;
+		self->channel_sender.send_rail_vchannel_data = NULL;
 	}
 	return self;
 }
@@ -155,3 +158,25 @@ Flow of init stage over channel;
    Client notify UI about success session establishing and go to
    RAIL_ESTABLISHED state.
 */
+//------------------------------------------------------------------------------
+void
+rail_on_channel_connected(RAIL_SESSION* rail_session)
+{
+}
+//------------------------------------------------------------------------------
+void
+rail_on_channel_terminated(RAIL_SESSION* rail_session)
+{
+}
+//------------------------------------------------------------------------------
+void
+rail_register_channel_sender(
+		RAIL_SESSION* rail_session,
+		RAIL_VCHANNEL_SENDER* sender
+		)
+{
+	rail_session->channel_sender.sender_object = sender->sender_object;
+	rail_session->channel_sender.send_rail_vchannel_data =
+			sender->send_rail_vchannel_data;
+}
+//------------------------------------------------------------------------------

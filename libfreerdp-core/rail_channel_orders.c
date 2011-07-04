@@ -703,3 +703,14 @@ rail_channel_process_received_data(
 	}
 	ASSERT(!"Undocumented RAIL channels server PDU order_type");
 }
+//------------------------------------------------------------------------------
+void
+rail_on_channel_data_received(
+		RAIL_SESSION * rail_session,
+		void*  data,
+		size_t length
+		)
+{
+	rail_channel_process_received_data(rail_session, data, length);
+}
+
