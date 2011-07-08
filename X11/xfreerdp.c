@@ -405,7 +405,12 @@ process_params(xfInfo * xfi, int argc, char ** argv, int * pindex)
 				printf("missing application name\n");
 				exit(XF_EXIT_WRONG_PARAM);
 			}
-			strncpy(settings->rail_exe_or_file, argv[*pindex], sizeof(settings->rail_exe_or_file) - 1);
+			memset(settings->rail_exe_or_file, 0, sizeof(settings->rail_exe_or_file));
+			memset(settings->rail_working_directory, 0, sizeof(settings->rail_exe_or_file));
+			memset(settings->rail_arguments, 0, sizeof(settings->rail_exe_or_file));
+
+			strcat(settings->rail_exe_or_file, "||");
+			strncat(settings->rail_exe_or_file, argv[*pindex], sizeof(settings->rail_exe_or_file) - 3);
 			settings->rail_exe_or_file[sizeof(settings->rail_exe_or_file) - 1] = 0;
 			settings->rail_mode_enabled = 1;
 		}

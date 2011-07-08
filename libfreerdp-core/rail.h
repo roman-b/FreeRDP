@@ -63,6 +63,13 @@ typedef struct _RAIL_UNICODE_STRING
 	uint8	*buffer;
 } RAIL_UNICODE_STRING;
 
+typedef struct _RAIL_STRING
+{
+	uint16  length;
+	uint8	*buffer;
+} RAIL_STRING;
+
+
 typedef struct _RAIL_CACHED_ICON_INFO
 {
 	uint8 	cache_id;
@@ -200,8 +207,21 @@ typedef struct _RAIL_UI_LISTENER
 {
 	void* ui_listener_object;
 
-    // Example event
-	void (*ui_on_rail_event1)();
+	// Notify UI about channel initialization for beginning timeout timer.
+	void (*ui_on_rail_handshake_request_sent)(void * ui);
+	void (*ui_on_rail_handshake_response_receved)(void * ui);
+
+    // On this event UI must create a sequence of
+	// rail_on_ui_sysparam_update() calls with all current client system parameters
+	void (*ui_on_initial_client_sysparams_update)(void * ui);
+
+
+	void (*ui_on_rail_exec_result_receved)(void * ui, uint16 exec_result,
+		uint32 raw_result);
+
+	void (*ui_on_rail_server_sysparam_received)(void * ui,
+			RAIL_SERVER_SYSPARAM * sysparam);
+
 
 } RAIL_UI_LISTENER;
 
@@ -281,9 +301,79 @@ rail_on_channel_terminated(RAIL_SESSION* rail_session);
 
 void
 rail_on_channel_data_received(
-		RAIL_SESSION * rail_session,
-		void*  data,
-		size_t length
+	RAIL_SESSION * rail_session,
+	void*  data,
+	size_t length
+	);
+
+// For receive information from UI
+void
+rail_register_ui_listener(
+		RAIL_SESSION* rail_session,
+		RAIL_UI_LISTENER* ui_listener
+		);
+
+
+void
+rail_on_ui_client_system_param_updated(
+		RAIL_SESSION* rail_session,
+		RAIL_CLIENT_SYSPARAM * sysparam
+		);
+
+
+// RAIL Core Handlers
+void
+rail_handle_server_hadshake(
+	RAIL_SESSION* session,
+	uint32 build_number
+	);
+
+void
+rail_handle_exec_result(
+	RAIL_SESSION* session,
+	uint16 flags,
+	uint16 exec_result,
+	uint32 raw_result,
+	RAIL_UNICODE_STRING * exe_or_file
+	);
+
+void
+rail_handle_server_sysparam(
+	RAIL_SESSION* session,
+	RAIL_SERVER_SYSPARAM * sysparam
+	);
+
+void
+rail_handle_server_movesize(
+	RAIL_SESSION* session,
+	uint32 window_id,
+	uint16 move_size_started,
+	uint16 move_size_type,
+	uint16 pos_x,
+	uint16 pos_y
+    );
+
+void
+rail_handle_server_minmax_info(
+	RAIL_SESSION* session,
+	uint32 window_id,
+	uint16 max_width, uint16 max_height,
+	uint16 max_pos_x, uint16 max_pos_y,
+	uint16 min_track_width, uint16 min_track_height,
+	uint16 max_track_width,	uint16 max_track_height
+    );
+
+void
+rail_handle_server_langbar_info(
+		RAIL_SESSION* session,
+		uint32 langbar_status
+		);
+
+void
+rail_handle_server_get_app_resp(
+		RAIL_SESSION* session,
+		uint32 window_id,
+		RAIL_UNICODE_STRING * app_id
 		);
 
 // RAIL library internal functions
@@ -292,7 +382,7 @@ void
 in_rail_unicode_string(STREAM s, RAIL_UNICODE_STRING * string);
 
 void
-free_rail_string(RAIL_UNICODE_STRING * string);
+free_rail_unicode_string(RAIL_UNICODE_STRING * string);
 
 
 #endif	// __RAIL_H

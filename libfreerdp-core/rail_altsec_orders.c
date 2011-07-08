@@ -25,6 +25,13 @@
 #include "rail.h"
 #include "stream.h"
 
+#define LOG_LEVEL 11
+#define LLOG(_level, _args) \
+  do { if (_level < LOG_LEVEL) { printf _args ; } } while (0)
+#define LLOGLN(_level, _args) \
+  do { if (_level < LOG_LEVEL) { printf _args ; printf("\n"); } } while (0)
+
+
 //------------------------------------------------------------------------------
 void
 in_rail_unicode_string(STREAM s, RAIL_UNICODE_STRING * string)
@@ -40,7 +47,7 @@ in_rail_unicode_string(STREAM s, RAIL_UNICODE_STRING * string)
 }
 //------------------------------------------------------------------------------
 void
-free_rail_string(RAIL_UNICODE_STRING * string)
+free_rail_unicode_string(RAIL_UNICODE_STRING * string)
 {
 	if (string->buffer != NULL)
 	{
@@ -470,6 +477,12 @@ rail_on_altsec_window_order_received(
 
 	in_uint16_le(s, order_size); /*OrderSize*/
 	in_uint32_le(s, fields_present_flags); /*FieldsPresentFlags*/
+
+	LLOGLN(10, ("rail_on_altsec_window_order_received: session=0x%p"
+			"data_size=%d order_size=%d fields_present_flags=0x%X",
+			rail_session, length, order_size, fields_present_flags));
+
+	return;
 
 	if (fields_present_flags & WINDOW_ORDER_TYPE_WINDOW)
 	{

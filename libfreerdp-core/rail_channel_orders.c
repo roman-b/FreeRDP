@@ -26,6 +26,13 @@
 
 #include "rail.h"
 
+#define LOG_LEVEL 11
+#define LLOG(_level, _args) \
+  do { if (_level < LOG_LEVEL) { printf _args ; } } while (0)
+#define LLOGLN(_level, _args) \
+  do { if (_level < LOG_LEVEL) { printf _args ; printf("\n"); } } while (0)
+
+
 
 /*
  * RAIL_PDU_HEADER
@@ -47,6 +54,14 @@ rail_alloc_order_data(
 	return (order_start + RAIL_PDU_HEADER_SIZE);
 }
 //------------------------------------------------------------------------------
+void out_rail_unicode_string_content(STREAM s, RAIL_UNICODE_STRING* string)
+{
+	if (string->length > 0)
+	{
+		out_uint8a(s, string->buffer, string->length);
+	}
+}
+//------------------------------------------------------------------------------
 void out_rail_unicode_string(STREAM s, RAIL_UNICODE_STRING* string)
 {
 	out_uint16_le(s, string->length);
@@ -66,7 +81,7 @@ void out_rail_rect_16(STREAM s, RAIL_RECT_16* rect)
 //------------------------------------------------------------------------------
 // Used by 'rail_send_vchannel_' routines for sending constructed RAIL PDU to
 // the 'rail' channel
-void
+static void
 rail_send_vchannel_order_data(
 		RAIL_SESSION * session,
 		uint16 order_type,
@@ -159,9 +174,9 @@ rail_send_vchannel_exec_order(
 	struct stream st_stream = {0};
 	STREAM s = &st_stream;
 
-	uint16 exe_or_file_length        = 2 + exe_or_file->length;
-	uint16 working_directory_length  = 2 + working_directory->length;
-	uint16 arguments_length          = 2 + arguments->length;
+	uint16 exe_or_file_length        = exe_or_file->length;
+	uint16 working_directory_length  = working_directory->length;
+	uint16 arguments_length          = arguments->length;
 
 	size_t data_length =
 		2 +                         /*Flags (2 bytes)*/
@@ -181,9 +196,9 @@ rail_send_vchannel_exec_order(
 	out_uint16_le(s, working_directory_length);
 	out_uint16_le(s, arguments_length);
 
-	out_rail_unicode_string(s, exe_or_file);
-	out_rail_unicode_string(s, working_directory);
-	out_rail_unicode_string(s, arguments);
+	out_rail_unicode_string_content(s, exe_or_file);
+	out_rail_unicode_string_content(s, working_directory);
+	out_rail_unicode_string_content(s, arguments);
 
 	rail_send_vchannel_order_data(session, RDP_RAIL_ORDER_EXEC, data,
 			data_length);
@@ -367,7 +382,6 @@ rail_send_vchannel_client_windowmove_order(
 	rail_send_vchannel_order_data(session, RDP_RAIL_ORDER_WINDOWMOVE, data,
 			data_length);
 }
-
 //------------------------------------------------------------------------------
 /*
  * The Client Information PDU is sent from client to server and contains
@@ -483,7 +497,7 @@ rail_process_vchannel_handshake_order(
 	uint32 build_number = 0;
 
 	in_uint32_le(s, build_number);
-	// rail_handle_server_hadshake(session, build_number);
+	rail_handle_server_hadshake(session, build_number);
 }
 //------------------------------------------------------------------------------
 /*
@@ -510,8 +524,10 @@ rail_process_vchannel_exec_result_order(
 	in_uint16_le(s, exe_or_file_length); /*ExeOrFileLength (2 bytes)*/
 	in_rail_unicode_string(s, &exe_or_file); /*ExeOrFile (variable)*/
 
-	// rail_handle_exec_result(session, flags, exec_result, raw_result,);
-	// free_rail_string(&exe_or_file);
+	rail_handle_exec_result(session, flags, exec_result, raw_result,
+			&exe_or_file);
+
+	free_rail_unicode_string(&exe_or_file);
 }
 //------------------------------------------------------------------------------
 /*
@@ -543,7 +559,7 @@ rail_process_vchannel_server_sysparam_update_order(
 		break;
 	};
 
-	// rail_handle_server_sysparam(session, sysparam);
+	rail_handle_server_sysparam(session, &sysparam);
 }
 //------------------------------------------------------------------------------
 /*
@@ -576,8 +592,8 @@ rail_process_vchannel_server_movesize_order(
 	in_uint16_le(s, pos_x);
 	in_uint16_le(s, pos_y);
 
-	// rail_handle_server_movesize(session, window_id, move_size_started,
-	//    move_size_type, pos_x, pos_y);
+	rail_handle_server_movesize(session, window_id, move_size_started,
+	    move_size_type, pos_x, pos_y);
 }
 //------------------------------------------------------------------------------
 /*
@@ -612,9 +628,9 @@ rail_process_vchannel_server_minmax_info_order(
 	in_uint16_le(s, max_track_width);
 	in_uint16_le(s, max_track_height);
 
-	// rail_handle_server_minmax_info(session, window_id, max_width,
-	//    max_height, max_pos_x, max_pos_y, min_track_width, min_track_height,
-	//    max_track_width, max_track_height);
+	rail_handle_server_minmax_info(session, window_id, max_width,
+	    max_height, max_pos_x, max_pos_y, min_track_width, min_track_height,
+	    max_track_width, max_track_height);
 }
 //------------------------------------------------------------------------------
 /*
@@ -630,7 +646,7 @@ rail_process_vchannel_server_langbar_info_order(
 
 	in_uint32_le(s, langbar_status);
 
-	// rail_handle_server_langbar_info(session, langbar_status);
+	rail_handle_server_langbar_info(session, langbar_status);
 }
 //------------------------------------------------------------------------------
 /*
@@ -654,8 +670,8 @@ rail_process_vchannel_server_get_appid_resp_order(
 	in_uint32_le(s, window_id);
 	in_uint8a(s, app_id.buffer, app_id.length);
 
-	// rail_handle_server_get_app_resp(session, window_id, app_id);
-	// free_rail_string(&app_id);
+	rail_handle_server_get_app_resp(session, window_id, &app_id);
+	free_rail_unicode_string(&app_id);
 }
 //------------------------------------------------------------------------------
 void
@@ -672,8 +688,16 @@ rail_channel_process_received_data(
 
 	stream_init_by_allocated_data(s, data, length);
 
-	out_uint16_le(s, order_type);   /* orderType */
-	out_uint16_le(s, order_length); /* orderLength */
+	in_uint16_le(s, order_type);   /* orderType */
+	in_uint16_le(s, order_length); /* orderLength */
+
+	LLOGLN(10, ("rail_channel_process_received_data: session=0x%p data_size=%d "
+			    "orderType=0x%X orderLength=0x%X",
+			    session,
+			    length,
+			    order_type,
+			    order_length
+			    ));
 
 	//TODO: ASSERT((orderLength - 4) <= ((uint8*)s->p - (uint8*)s->data) );
 
@@ -701,7 +725,7 @@ rail_channel_process_received_data(
 		rail_process_vchannel_server_get_appid_resp_order(session, s);
 		break;
 	}
-	ASSERT(!"Undocumented RAIL channels server PDU order_type");
+	//ASSERT(!"Undocumented RAIL channels server PDU order_type");
 }
 //------------------------------------------------------------------------------
 void

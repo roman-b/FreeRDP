@@ -38,7 +38,7 @@
 #include "rdp.h"
 #include "rail.h"
 
-#define LOG_LEVEL 1
+#define LOG_LEVEL 11
 #define LLOG(_level, _args) \
   do { if (_level < LOG_LEVEL) { printf _args ; } } while (0)
 #define LLOGLN(_level, _args) \
@@ -198,7 +198,7 @@ received_data_processing_thread_func(void * arg)
 /* called by main thread
    add item to linked list and inform worker thread that there is data */
 static void
-signal_data_received(railCorePlugin * plugin)
+queue_data_and_signal_data_received(railCorePlugin * plugin)
 {
 	struct data_in_item * item;
 
@@ -255,7 +255,7 @@ OpenEventProcessReceived(uint32 openHandle, void * pData, uint32 dataLength,
 		{
 			LLOGLN(0, ("rail_core_plugin:OpenEventProcessReceived: read error"));
 		}
-		signal_data_received(plugin);
+		queue_data_and_signal_data_received(plugin);
 	}
 }
 //------------------------------------------------------------------------------
@@ -282,6 +282,8 @@ InitEventProcessConnected(void * pInitHandle, void * pData, uint32 dataLength)
 	railCorePlugin * plugin;
 	uint32 error;
 	pthread_t thread;
+
+	LLOGLN(10, ("rail_core_plugin:InitEventProcessConnected:"));
 
 	plugin = (railCorePlugin *) chan_plugin_find_by_init_handle(pInitHandle);
 	if (plugin == NULL)
@@ -313,6 +315,9 @@ InitEventProcessTerminated(void * pInitHandle)
 	railCorePlugin * plugin;
 	int index;
 	struct data_in_item * in_item;
+
+	LLOGLN(10, ("rail_core_plugin:InitEventProcessTerminated: session=0x%p",
+			plugin->session));
 
 	plugin = (railCorePlugin *) chan_plugin_find_by_init_handle(pInitHandle);
 	if (plugin == NULL)
@@ -354,11 +359,30 @@ InitEventProcessTerminated(void * pInitHandle)
 }
 //------------------------------------------------------------------------------
 static void
+InitEventInitialized(void * pInitHandle)
+{
+	railCorePlugin * plugin;
+
+	LLOGLN(10, ("rail_core_plugin:InitEventInitialized: session=0x%p",
+			plugin->session));
+
+	plugin = (railCorePlugin *) chan_plugin_find_by_init_handle(pInitHandle);
+	if (plugin == NULL)
+	{
+		LLOGLN(0, ("rail_core_plugin:InitEventInitialized: error no match"));
+		return;
+	}
+}
+//------------------------------------------------------------------------------
+static void
 InitEvent(void * pInitHandle, uint32 event, void * pData, uint32 dataLength)
 {
-	LLOGLN(10, ("InitEvent: event %d", event));
+	LLOGLN(10, ("rail_core_plugin:InitEvent: event %d", event));
 	switch (event)
 	{
+		case CHANNEL_EVENT_INITIALIZED:
+			InitEventInitialized(pInitHandle);
+			break;
 		case CHANNEL_EVENT_CONNECTED:
 			InitEventProcessConnected(pInitHandle, pData, dataLength);
 			break;
