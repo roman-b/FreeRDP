@@ -316,8 +316,8 @@ InitEventProcessTerminated(void * pInitHandle)
 	int index;
 	struct data_in_item * in_item;
 
-	LLOGLN(10, ("rail_core_plugin:InitEventProcessTerminated: session=0x%p",
-			plugin->session));
+	LLOGLN(10, ("rail_core_plugin:InitEventProcessTerminated: pInitHandle=0x%p",
+			pInitHandle));
 
 	plugin = (railCorePlugin *) chan_plugin_find_by_init_handle(pInitHandle);
 	if (plugin == NULL)
@@ -325,6 +325,7 @@ InitEventProcessTerminated(void * pInitHandle)
 		LLOGLN(0, ("rail_core_plugin:InitEventProcessTerminated: error no match"));
 		return;
 	}
+
 
 	wait_obj_set(plugin->term_event);
 	index = 0;
@@ -363,8 +364,8 @@ InitEventInitialized(void * pInitHandle)
 {
 	railCorePlugin * plugin;
 
-	LLOGLN(10, ("rail_core_plugin:InitEventInitialized: session=0x%p",
-			plugin->session));
+	LLOGLN(10, ("rail_core_plugin:InitEventInitialized: pInitHandle=0x%p",
+			pInitHandle));
 
 	plugin = (railCorePlugin *) chan_plugin_find_by_init_handle(pInitHandle);
 	if (plugin == NULL)
@@ -372,6 +373,8 @@ InitEventInitialized(void * pInitHandle)
 		LLOGLN(0, ("rail_core_plugin:InitEventInitialized: error no match"));
 		return;
 	}
+	LLOGLN(10, ("rail_core_plugin:InitEventInitialized: session=0x%p",
+			plugin->session));
 }
 //------------------------------------------------------------------------------
 static void
