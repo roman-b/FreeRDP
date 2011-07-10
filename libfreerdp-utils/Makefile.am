@@ -11,7 +11,10 @@ libfreerdp_utils_la_SOURCES = \
 	semaphore.c \
 	unicode.c \
 	wait_obj.c \
-	chan_plugin.c
+	chan_plugin.c \
+	stopwatch.c \
+	profiler.c \
+	hexdump.c
 
 libfreerdp_utils_la_CFLAGS = \
 	-I$(top_srcdir) \

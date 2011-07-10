@@ -787,6 +787,14 @@ l_ui_reset_clip(struct rdp_inst * inst)
 static void
 l_ui_resize_window(struct rdp_inst * inst)
 {
+	xfInfo * xfi = GET_XFI(inst);
+
+	if (xfi->settings->software_gdi == 1)
+	{
+		gdi_free(inst);
+		gdi_init(inst, CLRCONV_ALPHA | CLRBUF_32BPP);		
+	}
+	
 	printf("ui_resize_window:\n");
 }
 
@@ -1065,6 +1073,8 @@ RD_BOOL
 l_ui_check_certificate(rdpInst * inst, const char * fingerprint,
 	const char * subject, const char * issuer, RD_BOOL verified)
 {
+	//char answer;
+
 	printf("certificate details:\n");
 	printf("  Subject:\n    %s\n", subject);
 	printf("  Issued by:\n    %s\n", issuer);
@@ -1073,7 +1083,17 @@ l_ui_check_certificate(rdpInst * inst, const char * fingerprint,
 	if (!verified)
 		printf("The server could not be authenticated. Connection security may be compromised!\n");
 
+#if 0
+	printf("Accept this certificate? (Y/N): ");
+	answer = fgetc(stdin);
+
+	if (answer == 'y' || answer == 'Y')
+		return True;
+	else
+		return False;
+#else
 	return True;
+#endif
 }
 
 static int

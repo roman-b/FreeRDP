@@ -21,12 +21,6 @@
 #ifndef __RAIL_CHANNEL_ORDERS_H
 #define	__RAIL_CHANNEL_ORDERS_H
 
-#include "frdp.h"
-#include "rdp.h"
-#include "secure.h"
-#include <freerdp/rdpset.h>
-#include <freerdp/utils/memory.h>
-
 #include "rail.h"
 
 void

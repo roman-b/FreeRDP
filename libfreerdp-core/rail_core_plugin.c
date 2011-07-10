@@ -34,7 +34,6 @@
 
 #include "frdp.h"
 #include "rdp.h"
-#include "secure.h"
 #include "rdp.h"
 #include "rail.h"
 
