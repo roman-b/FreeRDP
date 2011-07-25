@@ -140,7 +140,7 @@ rdp_recv(rdpRdp * rdp, enum RDP_PDU_TYPE * type, uint16 * source)
 
 #if WITH_DEBUG_RDP
 	DEBUG_RDP("Share Control Data PDU #%d, (type %x)", ++(rdp->packetno), *type);
-	hexdump(rdp->next_packet - totalLength, totalLength);
+	freerdp_hexdump(rdp->next_packet - totalLength, totalLength);
 #endif
 
 	return rdp->rdp_s;
@@ -698,7 +698,7 @@ rdp_send_confirm_active(rdpRdp * rdp)
 	int caplen;
 	int length;
 	uint32 sec_flags;
-	uint16 numberCapabilities = 14;
+	uint16 numberCapabilities = 15;
 
 	caps = stream_new(8192);
 
@@ -727,6 +727,7 @@ rdp_send_confirm_active(rdpRdp * rdp)
 		numberCapabilities++;
 		rdp_out_offscreenscache_capset(caps);
 	}
+	rdp_out_virtualchannel_capset(caps);
 	rdp_out_glyphcache_capset(caps);
 	if (rdp->settings->rail_mode_enabled)
 	{
@@ -1781,12 +1782,10 @@ rdp_free(rdpRdp * rdp)
 	if (rdp != NULL)
 	{
 		freerdp_uniconv_free(rdp->uniconv);
-		ext_free(rdp->ext);
 		cache_free(rdp->cache);
 		pcache_free(rdp->pcache);
 		orders_free(rdp->orders);
 		network_free(rdp->net);
-		sec_free(rdp->sec);
 		xfree(rdp->buffer);
 		sec_free(rdp->sec);
 		ext_free(rdp->ext);

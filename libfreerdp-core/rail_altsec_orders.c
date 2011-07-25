@@ -119,7 +119,7 @@ in_rail_icon_info(STREAM s, RAIL_ICON_INFO * icon_info)
 //------------------------------------------------------------------------------
 /* Process a Window Information Orders*/
 static void
-process_windowing_window_information(RAIL_SESSION* rail_session, STREAM s,
+process_window_information(RAIL_SESSION* rail_session, STREAM s,
 		uint32 fields_present_flags)
 {
 	uint32 window_id = 0;
@@ -331,7 +331,7 @@ in_rail_notify_icon_infotip(
 //------------------------------------------------------------------------------
 /* Process a Notification Icon Information orders*/
 static void
-process_windowing_notification_icon_information(
+process_notification_icon_information(
 		RAIL_SESSION* rail_session,
 		STREAM s,
 		uint32 fields_present_flags)
@@ -405,7 +405,7 @@ process_windowing_notification_icon_information(
 //------------------------------------------------------------------------------
 /* Process a Desktop Information Orders*/
 static void
-process_windowing_desktop_information(
+process_desktop_information(
 		RAIL_SESSION* rail_session,
 		STREAM s,
 		uint32 fields_present_flags
@@ -486,16 +486,16 @@ rail_on_altsec_window_order_received(
 
 	if (fields_present_flags & WINDOW_ORDER_TYPE_WINDOW)
 	{
-		process_windowing_window_information(rail_session, s, fields_present_flags);
+		process_window_information(rail_session, s, fields_present_flags);
 	}
 	else if (fields_present_flags & WINDOW_ORDER_TYPE_NOTIFY)
 	{
-		process_windowing_notification_icon_information(rail_session, s,
+		process_notification_icon_information(rail_session, s,
 				fields_present_flags);
 	}
 	else if (fields_present_flags & WINDOW_ORDER_TYPE_DESKTOP)
 	{
-		process_windowing_desktop_information(rail_session, s, fields_present_flags);
+		process_desktop_information(rail_session, s, fields_present_flags);
 	}
 	else
 	{

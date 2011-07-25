@@ -1970,14 +1970,31 @@ process_create_offscr_bitmap(rdpOrders * orders, STREAM s)
 static void
 process_alternate_secondary_window_order(rdpOrders * orders, STREAM s)
 {
-	rail_on_altsec_window_order_received(orders->rdp->rail_session, s->p,
-			(size_t)(s->end - s->p));
+	//rail_on_altsec_window_order_received(orders->rdp->rail_session, s->p,
+	//		(size_t)(s->end - s->p));
+
+	uint16 order_size;
+	uint32 fields_present_flags;
+
+
+
+	in_uint16_le(s, order_size); /*OrderSize*/
+	in_uint32_le(s, fields_present_flags); /*FieldsPresentFlags*/
+
+	printf("AltSec Windowing Orders coming!(size=%d fields=0x%08X)\n",
+			order_size, fields_present_flags);
+
+	in_uint8s(s, order_size - 1 - 2 - 4);
 }
 
 /* Process a non-standard order */
 static int
 process_alternate_secondary_order(rdpOrders * orders, STREAM s, uint8 order_flags)
 {
+//	printf("AltSec Orders: flags=%X order=%d\n",
+//			order_flags & 0x2,
+//			order_flags >> 2);
+
 	if (!(order_flags & 0x2))
 	{
 		perror("alternate secondary order parsing failed\n");
@@ -2065,6 +2082,7 @@ process_orders(rdpOrders * orders, STREAM s, uint16 num_orders)
 	RDP_ORDER_STATE * os = (RDP_ORDER_STATE *) (orders->order_state);
 	uint32 present;
 	uint8 order_flags;
+	uint8 order_class;
 	int size, processed = 0;
 	RD_BOOL delta;
 
@@ -2072,15 +2090,18 @@ process_orders(rdpOrders * orders, STREAM s, uint16 num_orders)
 	{
 		in_uint8(s, order_flags);
 
-		if (!(order_flags & RDP_ORDER_CTL_STANDARD))
+		// OrderClass in first 2 bits of Order Flags
+		order_class = (order_flags & 0x3);
+
+		if (order_class == RDP_ORDER_CTL_SECONDARY)
 		{
 			process_alternate_secondary_order(orders, s, order_flags);
 		}
-		else if (order_flags & RDP_ORDER_CTL_SECONDARY)
+		else if (order_class  == (RDP_ORDER_CTL_SECONDARY | RDP_ORDER_CTL_STANDARD))
 		{
 			process_secondary_order(orders, s);
 		}
-		else
+		else if (order_class == RDP_ORDER_CTL_STANDARD)
 		{
 			if (order_flags & RDP_ORDER_CTL_TYPE_CHANGE)
 			{
@@ -2207,6 +2228,10 @@ process_orders(rdpOrders * orders, STREAM s, uint16 num_orders)
 
 			if (order_flags & RDP_ORDER_CTL_BOUNDS)
 				ui_reset_clip(orders->rdp->inst);
+		}
+		else
+		{
+			ui_unimpl(orders->rdp->inst, "invalid order class (%d)", order_class);
 		}
 
 		processed++;

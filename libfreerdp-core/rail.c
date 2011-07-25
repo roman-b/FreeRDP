@@ -18,6 +18,7 @@
    limitations under the License.
 */
 
+
 #include "frdp.h"
 #include "rdp.h"
 #include "security.h"
@@ -59,43 +60,43 @@ void mock_ui_on_initial_client_sysparams_update(void * ui)
 	LLOGLN(10, ("mock_ui_on_rail_handshake_response_receved: session=0x%p",
 			session));
 
-	sysparams[0].type = SPI_SETDRAGFULLWINDOWS;
-	sysparams[0].value.full_window_drag_enabled = 0;
+	sysparams[0].type = SPI_SETHIGHCONTRAST;
+	sysparams[0].value.high_contrast_system_info.color_scheme.length = 0;
+	sysparams[0].value.high_contrast_system_info.color_scheme.buffer = NULL;
+	sysparams[0].value.high_contrast_system_info.flags = 0x7e;
 
-	sysparams[1].type = SPI_SETKEYBOARDCUES;
-	sysparams[1].value.menu_access_key_always_underlined = 0;
+	sysparams[1].type = RAIL_SPI_TASKBARPOS;
+	sysparams[1].value.work_area.left = 0;
+	sysparams[1].value.work_area.top = 0;
+	sysparams[1].value.work_area.right = 1024;
+	sysparams[1].value.work_area.bottom = 29;
 
-	sysparams[2].type = SPI_SETKEYBOARDPREF;
-	sysparams[2].value.keyboard_for_user_prefered = 0;
+	sysparams[2].type = SPI_SETMOUSEBUTTONSWAP;
+	sysparams[2].value.left_right_mouse_buttons_swapped = 0;
 
-	sysparams[3].type = SPI_SETMOUSEBUTTONSWAP;
-	sysparams[3].value.left_right_mouse_buttons_swapped = 0;
+	sysparams[3].type = SPI_SETKEYBOARDPREF;
+	sysparams[3].value.keyboard_for_user_prefered = 0;
 
-	sysparams[4].type = SPI_SETWORKAREA;
-	sysparams[4].value.work_area.top = 30;
-	sysparams[4].value.work_area.bottom = 768;
-	sysparams[4].value.work_area.left = 0;
-	sysparams[4].value.work_area.right = 1024;
+	sysparams[4].type = SPI_SETDRAGFULLWINDOWS;
+	sysparams[4].value.full_window_drag_enabled = 1;
 
-	sysparams[5].type = RAIL_SPI_DISPLAYCHANGE;
-	sysparams[5].value.display_resolution.top = 0;
-	sysparams[5].value.display_resolution.bottom = 768;
-	sysparams[5].value.display_resolution.left = 0;
-	sysparams[5].value.display_resolution.right = 1024;
+	sysparams[5].type = SPI_SETKEYBOARDCUES;
+	sysparams[5].value.menu_access_key_always_underlined = 0;
 
-	sysparams[6].type = RAIL_SPI_TASKBARPOS;
-	sysparams[6].value.work_area.top = 0;
-	sysparams[6].value.work_area.bottom = 29;
+	sysparams[6].type = SPI_SETWORKAREA;
 	sysparams[6].value.work_area.left = 0;
+	sysparams[6].value.work_area.top = 0;
 	sysparams[6].value.work_area.right = 1024;
-
-	sysparams[7].type = SPI_SETHIGHCONTRAST;
-	sysparams[7].value.high_contrast_system_info.color_scheme.length = 0;
-	sysparams[7].value.high_contrast_system_info.color_scheme.buffer = NULL;
-	sysparams[7].value.high_contrast_system_info.flags = 0x7e;
+	sysparams[6].value.work_area.bottom = 768;
 
 
-	for (i = 0; i < 8; i++)
+//	sysparams[5].type = RAIL_SPI_DISPLAYCHANGE;
+//	sysparams[5].value.display_resolution.top = 0;
+//	sysparams[5].value.display_resolution.bottom = 768;
+//	sysparams[5].value.display_resolution.left = 0;
+//	sysparams[5].value.display_resolution.right = 1024;
+
+	for (i = 0; i < 7; i++)
 	{
 		rail_on_ui_client_system_param_updated(session, &sysparams[i]);
 	}
@@ -198,8 +199,8 @@ rail_session_new(struct rdp_rdp * rdp)
 	{
 		memset(self, 0, sizeof(RAIL_SESSION));
 		self->rdp = rdp;
-		self->number_icon_caches = 3;
-		self->number_icon_cache_entries = 17;
+		self->number_icon_caches = 2;
+		self->number_icon_cache_entries = 10;
 
 		self->channel_sender.sender_object = NULL;
 		self->channel_sender.send_rail_vchannel_data = NULL;
@@ -223,10 +224,14 @@ rail_get_rail_capset(
 		uint32 * rail_support_level
 		)
 {
-	LLOGLN(10, ("rail_get_rail_capset: session=0x%p", rail_session));
-
 	*rail_support_level = (RAIL_LEVEL_SUPPORTED |
 			RAIL_LEVEL_DOCKED_LANGBAR_SUPPORTED);
+
+	LLOGLN(10, ("rail_get_rail_capset: session=0x%p "
+			"rail_support_level=0x%X",
+			rail_session,
+			*rail_support_level
+			));
 }
 //------------------------------------------------------------------------------
 void
@@ -236,14 +241,16 @@ rail_process_rail_capset(
 		)
 {
 	rail_session->rail_mode_supported 		=
-		((rail_support_level & RAIL_LEVEL_SUPPORTED) ? 1 : 0);
+		(rail_support_level >= RAIL_LEVEL_SUPPORTED);
 
 	rail_session->docked_langbar_supported	=
 		((rail_support_level & RAIL_LEVEL_DOCKED_LANGBAR_SUPPORTED) ? 1 : 0);
 
 	LLOGLN(10, ("rail_process_rail_capset: session=0x%p "
+			"rail_support_level=0x%X "
 			"rail_mode_supported=%d docked_langbar_supported=%d",
 			rail_session,
+			rail_support_level,
 			rail_session->rail_mode_supported,
 			rail_session->docked_langbar_supported));
 
@@ -257,11 +264,18 @@ rail_get_window_capset(
 		uint16 * number_icon_cache_entries
 		)
 {
-	LLOGLN(10, ("rail_get_window_capset: session=0x%p ", rail_session));
-
-	*window_support_level = (WINDOW_LEVEL_SUPPORTED | WINDOW_LEVEL_SUPPORTED_EX);
+	*window_support_level = WINDOW_LEVEL_SUPPORTED_EX;
 	*number_icon_caches = rail_session->number_icon_caches;
 	*number_icon_cache_entries = rail_session->number_icon_cache_entries;
+
+	LLOGLN(10, ("rail_get_window_capset: session=0x%p "
+			"window_support_level=0x%X number_icon_caches=%d "
+			"number_icon_cache_entries=%d",
+			rail_session,
+			*window_support_level,
+			*number_icon_caches,
+			*number_icon_cache_entries
+			));
 }
 //------------------------------------------------------------------------------
 void
@@ -273,16 +287,24 @@ rail_process_window_capset(
 		)
 {
 	rail_session->window_level_supported =
-			((window_support_level & WINDOW_LEVEL_SUPPORTED) ? 1 : 0);
+		     (
+				 ((window_support_level == WINDOW_LEVEL_SUPPORTED) ||
+				 (window_support_level == WINDOW_LEVEL_SUPPORTED_EX))
+						? 1 : 0
+		     );
+
 	rail_session->window_level_ex_supported =
-			((window_support_level & WINDOW_LEVEL_SUPPORTED_EX) ? 1 : 0);
+			((window_support_level == WINDOW_LEVEL_SUPPORTED_EX) ? 1 : 0);
+
 	rail_session->number_icon_caches = number_icon_caches;
 	rail_session->number_icon_cache_entries = number_icon_cache_entries;
 
 	LLOGLN(10, ("rail_process_window_capset: session=0x%p "
+			"window_support_level=0x%X "
 			"window_level_supported=%d window_level_ex_supported=%d "
 			"number_icon_caches=%d number_icon_cache_entries=%d",
 			rail_session,
+			window_support_level,
 			rail_session->window_level_supported,
 			rail_session->docked_langbar_supported,
 			rail_session->number_icon_caches,
@@ -315,11 +337,7 @@ void
 rail_on_channel_connected(RAIL_SESSION* session)
 {
 	LLOGLN(10, ("rail_on_channel_connected() called."));
-	uint32 build_number = 0x00001771; // from MS doc protocol examples
-
 	register_mock_ui_for_session(session);
-
-	rail_send_vchannel_handshake_order(session, build_number);
 }
 //------------------------------------------------------------------------------
 void
@@ -392,17 +410,23 @@ rail_handle_server_hadshake(
 	uint32 build_number
 	)
 {
+	uint32 client_build_number = 0x00001db0;
+
 	LLOGLN(10, ("rail_handle_server_hadshake: buildNumber=0x%X.", build_number));
 
-	// Step 1. Send Client Information Order
+	// Step 1. Send Handshake PDU (2.2.2.2.1)
+	// Fixed: MS-RDPERP 1.3.2.1 is not correct!
+	rail_send_vchannel_handshake_order(session, client_build_number);
+
+	// Step 2. Send Client Information PDU (2.2.2.2.1)
 	rail_send_vchannel_client_information_order(session,
 		RAIL_CLIENTSTATUS_ALLOWLOCALMOVESIZE);
 
-	// Step 2. Send Client System Parameters Update with all initial parameters
+	// Step 3. Send Client System Parameters Update with all initial parameters
 	session->ui_listener.ui_on_initial_client_sysparams_update(
 		session->ui_listener.ui_listener_object);
 
-	// Step 3. Send Client Execute
+	// Step 4. Send Client Execute
 	// FIXME:
 	// According to "3.1.1.1 Server State Machine" Client Execute
 	// will be processed after Destop Sync processed.
@@ -419,7 +443,7 @@ rail_handle_exec_result(
 	RAIL_UNICODE_STRING * exe_or_file
 	)
 {
-	LLOGLN(10, ("rail_handle_exec_result: flags=0x%X exec_result=0x%X"
+	LLOGLN(10, ("rail_handle_exec_result: flags=0x%X exec_result=0x%X "
 			" raw_result=0x%X",	flags, exec_result, raw_result));
 
 	session->ui_listener.ui_on_rail_exec_result_receved(
@@ -433,7 +457,7 @@ rail_handle_server_sysparam(
 	RAIL_SERVER_SYSPARAM * sysparam
 	)
 {
-	LLOGLN(10, ("rail_handle_server_sysparam: type=0x%X scr_enabled=%d"
+	LLOGLN(10, ("rail_handle_server_sysparam: type=0x%X scr_enabled=%d "
 			" scr_lock_enabled=%d",	sysparam->type,
 			sysparam->value.screen_saver_enabled,
 			sysparam->value.screen_saver_lock_enabled));
