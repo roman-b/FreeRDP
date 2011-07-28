@@ -233,6 +233,7 @@ OpenEventProcessReceived(uint32 openHandle, void * pData, uint32 dataLength,
 
 	plugin = (railCorePlugin *) chan_plugin_find_by_open_handle(openHandle);
 
+	LLOGLN(10, ("------------------------------------------------"));
 	LLOGLN(10, ("rail_core_plugin:OpenEventProcessReceived: receive openHandle %d dataLength %d "
 		"totalLength %d dataFlags %d",
 		openHandle, dataLength, totalLength, dataFlags));

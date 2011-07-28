@@ -22,6 +22,7 @@
 #include "frdp.h"
 #include "rdp.h"
 #include <freerdp/utils/memory.h>
+#include <freerdp/utils/hexdump.h>
 #include "rail.h"
 #include "stream.h"
 
@@ -115,6 +116,18 @@ in_rail_icon_info(STREAM s, RAIL_ICON_INFO * icon_info)
 		icon_info->bits_color = xmalloc(icon_info->bits_color_size);
 		in_uint8a(s, icon_info->bits_color, icon_info->bits_color_size);
 	}
+
+	LLOGLN(10, ("ICON_INFO: cache_entry_id=0x%X cache_id=0x%X bpp=%d width=%d "
+			"height=%d color_table_size=%d bits_mask_size=%d bits_color_size=%d",
+			icon_info->cache_info.cache_entry_id,
+			icon_info->cache_info.cache_id,
+			icon_info->bpp,
+			icon_info->width,
+			icon_info->height,
+			icon_info->color_table_size,
+			icon_info->bits_mask_size,
+			icon_info->bits_color_size
+			));
 }
 //------------------------------------------------------------------------------
 /* Process a Window Information Orders*/
@@ -130,14 +143,19 @@ process_window_information(RAIL_SESSION* rail_session, STREAM s,
 
 	new_window_flag = (fields_present_flags & WINDOW_ORDER_STATE_NEW) ? 1 : 0;
 
+	LLOGLN(10, ("WINDOW_ORDER_TYPE_WINDOW order (wnd_id=0x%X is_new=%d)", window_id,
+			new_window_flag));
+
 	/* process Deleted Window order*/
 	if (fields_present_flags & WINDOW_ORDER_STATE_DELETED)
 	{
 		/*TODO:
-		 * - assert order_size and other flags
 		 * - call rail_handle_window_deletion(window_id);*/
+		LLOGLN(10, ("WINDOW_ORDER_STATE_DELETED event."));
+
 		return;
 	}
+
 
 	/* process Cached Icon order*/
 	if (fields_present_flags & WINDOW_ORDER_CACHEDICON)
@@ -145,6 +163,11 @@ process_window_information(RAIL_SESSION* rail_session, STREAM s,
 		RAIL_CACHED_ICON_INFO cached_info = {0};
 
 		in_rail_cached_icon_info(s, &cached_info);
+		LLOGLN(10, ("WINDOW_ORDER_CACHEDICON event.(cache_entry_id=0x%X cache_id=0x%X)",
+				cached_info.cache_entry_id,
+				cached_info.cache_id
+				));
+
 
 		/*TODO:
 		 * call rail_handle_window_cached_icon(window_id,
@@ -155,11 +178,14 @@ process_window_information(RAIL_SESSION* rail_session, STREAM s,
 		return;
 	}
 
+
 	/* process Window Icon order*/
 	if (fields_present_flags & WINDOW_ORDER_ICON)
 	{
 		RAIL_ICON_INFO icon_info = {.cache_info = {0}, 0};
+		uint8 is_icon_big = ((fields_present_flags & WINDOW_ORDER_FIELD_ICON_BIG) != 0);
 
+		LLOGLN(10, ("WINDOW_ORDER_ICON event. (is_icon_big=%d)", is_icon_big));
 		in_rail_icon_info(s, &icon_info);
 
 		/*TODO:
@@ -172,6 +198,9 @@ process_window_information(RAIL_SESSION* rail_session, STREAM s,
 		return;
 	}
 
+	LLOGLN(10, ("WINDOW_ORDER_WINDOW event for new or existing window."));
+
+
 	/* Otherwise process New or Existing Window order*/
 
 	/*OwnerWindowId*/
@@ -179,6 +208,8 @@ process_window_information(RAIL_SESSION* rail_session, STREAM s,
 	if (fields_present_flags & WINDOW_ORDER_FIELD_OWNER)
 	{
 		in_uint32_le(s, window_info.owner_window_id);
+		LLOGLN(10, ("WINDOW_ORDER_FIELD_OWNER exists. (owner_window_id=0x%X).",
+				window_info.owner_window_id));
 	}
 
 	/*Style*/
@@ -188,6 +219,12 @@ process_window_information(RAIL_SESSION* rail_session, STREAM s,
 	{
 		in_uint32_le(s, window_info.style);
 		in_uint32_le(s, window_info.extened_style);
+
+		LLOGLN(10, ("WINDOW_ORDER_FIELD_STYLE exists. (style=0x%X style_ex=0x%X).",
+				window_info.owner_window_id,
+				window_info.extened_style
+				));
+
 	}
 
 	/*ShowState*/
@@ -195,6 +232,9 @@ process_window_information(RAIL_SESSION* rail_session, STREAM s,
 	if (fields_present_flags & WINDOW_ORDER_FIELD_SHOW)
 	{
 		in_uint8(s, window_info.show_state);
+		LLOGLN(10, ("WINDOW_ORDER_FIELD_SHOW exists. (state=%d).",
+				window_info.show_state
+				));
 	}
 
 	/*TitleInfo*/
@@ -202,7 +242,13 @@ process_window_information(RAIL_SESSION* rail_session, STREAM s,
 	window_info.title_info.buffer = NULL;
 	if (fields_present_flags & WINDOW_ORDER_FIELD_TITLE)
 	{
+		// TODO: add 520 bytes limit for title
 		in_rail_unicode_string(s, &window_info.title_info);
+
+		LLOGLN(10, ("WINDOW_ORDER_FIELD_TITLE exists. (title length=%d) UNICODE string dump:",
+				window_info.title_info.length
+				));
+		freerdp_hexdump(window_info.title_info.buffer, window_info.title_info.length);
 	}
 
 	/* ClientOffsetX/ClientOffsetY */
@@ -212,6 +258,11 @@ process_window_information(RAIL_SESSION* rail_session, STREAM s,
 	{
 		in_uint32_le(s, window_info.client_offset_x);
 		in_uint32_le(s, window_info.client_offset_y);
+
+		LLOGLN(10, ("WINDOW_ORDER_FIELD_CLIENTAREAOFFSET exists. (cl_off_x=%d cl_off_y=%d).",
+				window_info.client_offset_x,
+				window_info.client_offset_y
+				));
 	}
 
 	/* ClientAreaWidth/ClientAreaHeight */
@@ -221,6 +272,11 @@ process_window_information(RAIL_SESSION* rail_session, STREAM s,
 	{
 		in_uint32_le(s, window_info.client_area_width);
 		in_uint32_le(s, window_info.client_area_height);
+
+		LLOGLN(10, ("WINDOW_ORDER_FIELD_CLIENTAREASIZE exists. (cl_area_w=%d cl_area_h=%d).",
+				window_info.client_area_width,
+				window_info.client_area_height
+				));
 	}
 
 	/* RPContent */
@@ -228,6 +284,9 @@ process_window_information(RAIL_SESSION* rail_session, STREAM s,
 	if (fields_present_flags & WINDOW_ORDER_FIELD_RPCONTENT)
 	{
 		in_uint8(s, window_info.rp_content);
+		LLOGLN(10, ("WINDOW_ORDER_FIELD_RPCONTENT exists. (rp_content=%d).",
+				window_info.rp_content
+				));
 	}
 
 	/* RootParentHandle */
@@ -235,6 +294,9 @@ process_window_information(RAIL_SESSION* rail_session, STREAM s,
 	if (fields_present_flags & WINDOW_ORDER_FIELD_ROOTPARENT)
 	{
 		in_uint32_le(s, window_info.root_parent_handle);
+		LLOGLN(10, ("WINDOW_ORDER_FIELD_ROOTPARENT exists. (root_handle=0x%X).",
+				window_info.root_parent_handle
+				));
 	}
 
 	/* WindowOffsetX/WindowOffsetY */
@@ -244,6 +306,12 @@ process_window_information(RAIL_SESSION* rail_session, STREAM s,
 	{
 		in_uint32_le(s, window_info.window_offset_x);
 		in_uint32_le(s, window_info.window_offset_y);
+
+		LLOGLN(10, ("WINDOW_ORDER_FIELD_WNDOFFSET exists. (offset_x=%d offset_y=%d).",
+				window_info.window_offset_x,
+				window_info.window_offset_y
+				));
+
 	}
 
 	/* WindowClientDeltaX/WindowClientDeltaY */
@@ -253,6 +321,11 @@ process_window_information(RAIL_SESSION* rail_session, STREAM s,
 	{
 		in_uint32_le(s, window_info.window_client_delta_x);
 		in_uint32_le(s, window_info.window_client_delta_y);
+
+		LLOGLN(10, ("WINDOW_ORDER_FIELD_WNDCLIENTDELTA exists. (cl_delta_x=%d cl_delta_y=%d).",
+				window_info.window_client_delta_x,
+				window_info.window_client_delta_y
+				));
 	}
 
 	/* WindowWidth/WindowHeight */
@@ -262,6 +335,11 @@ process_window_information(RAIL_SESSION* rail_session, STREAM s,
 	{
 		in_uint32_le(s, window_info.window_width);
 		in_uint32_le(s, window_info.window_height);
+
+		LLOGLN(10, ("WINDOW_ORDER_FIELD_WNDSIZE exists. (window_w=%d window_h=%d).",
+				window_info.window_width,
+				window_info.window_height
+				));
 	}
 
 	/* NumWindowRects and WindowRects */
@@ -271,13 +349,28 @@ process_window_information(RAIL_SESSION* rail_session, STREAM s,
 	{
 		int i = 0;
 
-		in_uint32_le(s, window_info.window_rects_number);
+		in_uint16_le(s, window_info.window_rects_number);
+
+		LLOGLN(10, ("WINDOW_ORDER_FIELD_WNDRECTS exists. "
+				"(window_rects_number=%d).",
+				window_info.window_rects_number
+				));
+
 		window_info.window_rects = (RAIL_RECT_16*)xmalloc(
 				window_info.window_rects_number * sizeof(RAIL_RECT_16));
 
 		for (i = 0; i < window_info.window_rects_number; i++)
 		{
 			in_rail_rect_16(s, &window_info.window_rects[i]);
+
+			LLOGLN(10, ("WINDOW_ORDER_FIELD_WNDRECTS exists. "
+					"(rectN=%d left=%d top=%d right=%d bottom=%d).",
+					i+1,
+					window_info.window_rects[i].left,
+					window_info.window_rects[i].top,
+					window_info.window_rects[i].right,
+					window_info.window_rects[i].bottom
+					));
 		}
 	}
 
@@ -288,6 +381,12 @@ process_window_information(RAIL_SESSION* rail_session, STREAM s,
 	{
 		in_uint32_le(s, window_info.visible_offset_x);
 		in_uint32_le(s, window_info.visible_offset_y);
+
+		LLOGLN(10, ("WINDOW_ORDER_FIELD_VISOFFSET exists. "
+				"(visible_offset_x=%d visible_offset_y=%d).",
+				window_info.visible_offset_x,
+				window_info.visible_offset_y
+				));
 	}
 
 	/* NumVisibilityRects and VisibilityRects */
@@ -297,13 +396,28 @@ process_window_information(RAIL_SESSION* rail_session, STREAM s,
 	{
 		int i = 0;
 
-		in_uint32_le(s, window_info.visibility_rects_number);
+		in_uint16_le(s, window_info.visibility_rects_number);
+
+		LLOGLN(10, ("WINDOW_ORDER_FIELD_VISIBILITY exists. "
+				"(visibility_rects_number=%d).",
+				window_info.visibility_rects_number
+				));
+
 		window_info.visibility_rects = (RAIL_RECT_16*)xmalloc(
 				window_info.visibility_rects_number * sizeof(RAIL_RECT_16));
 
 		for (i = 0; i < window_info.visibility_rects_number; i++)
 		{
 			in_rail_rect_16(s, &window_info.visibility_rects[i]);
+			LLOGLN(10, ("WINDOW_ORDER_FIELD_VISIBILITY exists. "
+					"(rectN=%d left=%d top=%d right=%d bottom=%d).",
+					i+1,
+					window_info.visibility_rects[i].left,
+					window_info.visibility_rects[i].top,
+					window_info.visibility_rects[i].right,
+					window_info.visibility_rects[i].bottom
+					));
+
 		}
 	}
 
@@ -346,6 +460,13 @@ process_notification_icon_information(
 
 	new_notify_icon_flag = (fields_present_flags & WINDOW_ORDER_STATE_NEW) ? 1 : 0;
 
+	LLOGLN(10, ("WINDOW_ORDER_TYPE_NOTIFY order (wnd_id=0x%X notify_icon_id=0x%X is_new=%d)",
+			window_id,
+			notify_icon_id,
+			new_notify_icon_flag
+			));
+
+
 	if (fields_present_flags &  WINDOW_ORDER_STATE_DELETED)
 	{
 		/*TODO:
@@ -353,6 +474,8 @@ process_notification_icon_information(
 			 	 	 window_id,
 			 	 	 notify_icon_id)
 		 */
+		LLOGLN(10, ("WINDOW_ORDER_STATE_DELETED event."));
+
 		return;
 	}
 
@@ -362,29 +485,60 @@ process_notification_icon_information(
 	if (fields_present_flags &  WINDOW_ORDER_FIELD_NOTIFY_VERSION)
 	{
 		in_uint32_le(s, notify_icon_info.version);
+		LLOGLN(10, ("WINDOW_ORDER_FIELD_NOTIFY_VERSION exists.(version=%d).",
+				notify_icon_info.version
+				));
 	}
 
 	/*ToolTip*/
 	if (fields_present_flags &  WINDOW_ORDER_FIELD_NOTIFY_TIP)
 	{
 		in_rail_unicode_string(s, &notify_icon_info.tool_tip);
+
+		LLOGLN(10, ("WINDOW_ORDER_FIELD_NOTIFY_TIP exists.(length=%d dump).",
+				notify_icon_info.tool_tip.length
+				));
+		freerdp_hexdump(notify_icon_info.tool_tip.buffer,
+				notify_icon_info.tool_tip.length
+				);
 	}
 
 	/*InfoTip*/
 	if (fields_present_flags &  WINDOW_ORDER_FIELD_NOTIFY_INFO_TIP)
 	{
+		// TODO:
+		// - add 510 byte limit for InfoTipText
+		// - add 126 byte limit for Title
 		in_rail_notify_icon_infotip(s, &notify_icon_info.info_tip);
+
+		LLOGLN(10, ("WINDOW_ORDER_FIELD_NOTIFY_INFO_TIP exists.("
+				"timeout=%d info_flags=0x%X info_tip_length=%d title_length=%d).",
+				notify_icon_info.info_tip.timeout,
+				notify_icon_info.info_tip.info_flags,
+				notify_icon_info.info_tip.info_tip_text.length,
+				notify_icon_info.info_tip.title.length
+				));
+		freerdp_hexdump(notify_icon_info.info_tip.info_tip_text.buffer,
+				notify_icon_info.info_tip.info_tip_text.length
+				);
+		freerdp_hexdump(notify_icon_info.info_tip.title.buffer,
+				notify_icon_info.info_tip.title.length
+				);
 	}
 
 	/*State*/
-	if (fields_present_flags &  WINDOW_ORDER_FIELD_NOTIFY_STATE)
+	if (fields_present_flags & WINDOW_ORDER_FIELD_NOTIFY_STATE)
 	{
 		in_uint32_le(s, notify_icon_info.state);
+		LLOGLN(10, ("WINDOW_ORDER_FIELD_NOTIFY_STATE exists.(state=%d).",
+				notify_icon_info.state
+				));
 	}
 
 	/*Icon*/
 	if (fields_present_flags &  WINDOW_ORDER_ICON)
 	{
+		LLOGLN(10, ("WINDOW_ORDER_ICON exists."));
 		in_rail_icon_info(s, &notify_icon_info.icon);
 	}
 
@@ -392,6 +546,10 @@ process_notification_icon_information(
 	if (fields_present_flags &  WINDOW_ORDER_CACHEDICON)
 	{
 		in_rail_cached_icon_info(s, &notify_icon_info.cached_icon);
+		LLOGLN(10, ("WINDOW_ORDER_CACHEDICON exists.(entry_id=0x%X cache_id=0x%X)",
+			notify_icon_info.cached_icon.cache_entry_id,
+			notify_icon_info.cached_icon.cache_id
+			));
 	}
 
 	/*TODO:
@@ -418,30 +576,40 @@ process_desktop_information(
 	int    	desktop_arc_began = 0;
 	int    	desktop_arc_completed = 0;
 
+	LLOGLN(10, ("WINDOW_ORDER_TYPE_DESKTOP order"));
+
+
 	/*Non-Monitored Desktop*/
 	if (fields_present_flags &  WINDOW_ORDER_FIELD_DESKTOP_NONE)
 	{
+		LLOGLN(10, ("WINDOW_ORDER_FIELD_DESKTOP_NONE event."));
 		return;
 	}
 
 	if (fields_present_flags &  WINDOW_ORDER_FIELD_DESKTOP_HOOKED)
 	{
+		LLOGLN(10, ("WINDOW_ORDER_FIELD_DESKTOP_HOOKED exists."));
 		desktop_hooked = 1;
 	}
 
 	if (fields_present_flags &  WINDOW_ORDER_FIELD_DESKTOP_ARC_BEGAN)
 	{
+		LLOGLN(10, ("WINDOW_ORDER_FIELD_DESKTOP_ARC_BEGAN exists."));
 		desktop_arc_began = 1;
 	}
 
 	if (fields_present_flags &  WINDOW_ORDER_FIELD_DESKTOP_ARC_COMPLETED)
 	{
+		LLOGLN(10, ("WINDOW_ORDER_FIELD_DESKTOP_ARC_COMPLETED exists."));
 		desktop_arc_completed = 1;
 	}
 
 	if (fields_present_flags &  WINDOW_ORDER_FIELD_DESKTOP_ACTIVEWND)
 	{
 		in_uint32_le(s, active_window_id);
+		LLOGLN(10, ("WINDOW_ORDER_FIELD_DESKTOP_ACTIVEWND exists.(active_window_id=0x%X)",
+				active_window_id
+				));
 	}
 
 	if (fields_present_flags &  WINDOW_ORDER_FIELD_DESKTOP_ZORDER)
@@ -451,9 +619,16 @@ process_desktop_information(
 		in_uint8(s, window_ids_number);
 		window_ids = (uint32*)xmalloc(window_ids_number * sizeof(uint32));
 
+		LLOGLN(10, ("WINDOW_ORDER_FIELD_DESKTOP_ZORDER exists: number=%d.",
+				window_ids_number));
+
 		for (i = 0; i < window_ids_number; i++)
 		{
 			in_uint32_le(s, window_ids[i]);
+			LLOGLN(10, ("WINDOW_ORDER_FIELD_DESKTOP_ZORDER exists: window_id[%d]=0x%X.",
+					i+1,
+					window_ids[i]
+					));
 		}
 	}
 
@@ -463,26 +638,16 @@ process_desktop_information(
 /* Process a Windowing Alternate Secondary Drawing Order*/
 void
 rail_on_altsec_window_order_received(
-		RAIL_SESSION* rail_session,
+		RAIL_SESSION * rail_session,
+		uint32 fields_present_flags,
 		void* data,
-		size_t length
+		size_t order_size
 		)
 {
 	struct stream s_stream = {0};
 	STREAM        s = &s_stream;
-	uint16 order_size;
-	uint32 fields_present_flags;
 
-	stream_init_by_allocated_data(s, data, length);
-
-	in_uint16_le(s, order_size); /*OrderSize*/
-	in_uint32_le(s, fields_present_flags); /*FieldsPresentFlags*/
-
-	LLOGLN(10, ("rail_on_altsec_window_order_received: session=0x%p"
-			"data_size=%d order_size=%d fields_present_flags=0x%X",
-			rail_session, length, order_size, fields_present_flags));
-
-	return;
+	stream_init_by_allocated_data(s, data, order_size);
 
 	if (fields_present_flags & WINDOW_ORDER_TYPE_WINDOW)
 	{
@@ -490,8 +655,7 @@ rail_on_altsec_window_order_received(
 	}
 	else if (fields_present_flags & WINDOW_ORDER_TYPE_NOTIFY)
 	{
-		process_notification_icon_information(rail_session, s,
-				fields_present_flags);
+		process_notification_icon_information(rail_session, s, fields_present_flags);
 	}
 	else if (fields_present_flags & WINDOW_ORDER_TYPE_DESKTOP)
 	{

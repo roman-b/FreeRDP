@@ -24,6 +24,7 @@
 #include "security.h"
 #include <freerdp/rdpset.h>
 #include <freerdp/utils/memory.h>
+#include <freerdp/utils/hexdump.h>
 
 
 #include "rail.h"
@@ -241,7 +242,7 @@ rail_process_rail_capset(
 		)
 {
 	rail_session->rail_mode_supported 		=
-		(rail_support_level >= RAIL_LEVEL_SUPPORTED);
+			((rail_support_level & RAIL_LEVEL_SUPPORTED) ? 1 : 0);
 
 	rail_session->docked_langbar_supported	=
 		((rail_support_level & RAIL_LEVEL_DOCKED_LANGBAR_SUPPORTED) ? 1 : 0);
@@ -310,7 +311,6 @@ rail_process_window_capset(
 			rail_session->number_icon_caches,
 			rail_session->number_icon_cache_entries
 			));
-
 }
 //------------------------------------------------------------------------------
 /*
@@ -444,7 +444,10 @@ rail_handle_exec_result(
 	)
 {
 	LLOGLN(10, ("rail_handle_exec_result: flags=0x%X exec_result=0x%X "
-			" raw_result=0x%X",	flags, exec_result, raw_result));
+			"raw_result=0x%X exe_or_file=(length=%d buffer=dump):",
+			flags, exec_result, raw_result,
+			exe_or_file->length));
+	freerdp_hexdump(exe_or_file->buffer, exe_or_file->length);
 
 	session->ui_listener.ui_on_rail_exec_result_receved(
 			session->ui_listener.ui_listener_object, exec_result, raw_result);
@@ -476,6 +479,14 @@ rail_handle_server_movesize(
 	uint16 pos_y
     )
 {
+	LLOGLN(10, ("rail_handle_server_movesize: windows_id=0x%X "
+			"started=%d move_size_type=%d pos_x=%d pos_y=%d",
+			window_id,
+			move_size_started,
+			move_size_type,
+			pos_x,
+			pos_y
+			));
 }
 //------------------------------------------------------------------------------
 void
@@ -488,6 +499,19 @@ rail_handle_server_minmax_info(
 	uint16 max_track_width,	uint16 max_track_height
     )
 {
+	LLOGLN(10, ("rail_handle_server_minmax_info: windows_id=0x%X "
+			"max_width=%d max_height=%d max_pos_x=%d max_pos_y=%d "
+			"min_track_width=%d min_track_height=%d max_track_width=%d max_track_height=%d",
+			window_id,
+			max_width,
+			max_height,
+			max_pos_x,
+			max_pos_y,
+			min_track_width,
+			min_track_height,
+			max_track_width,
+			max_track_height
+			));
 }
 //------------------------------------------------------------------------------
 void
@@ -496,6 +520,9 @@ rail_handle_server_langbar_info(
 		uint32 langbar_status
 		)
 {
+	LLOGLN(10, ("rail_handle_server_langbar_info: langbar_status=0x%X ",
+			langbar_status
+			));
 }
 //------------------------------------------------------------------------------
 void
@@ -505,5 +532,9 @@ rail_handle_server_get_app_resp(
 		RAIL_UNICODE_STRING * app_id
 		)
 {
+	LLOGLN(10, ("rail_handle_server_langbar_info: window_id=0x%X ",
+			window_id
+			));
+	freerdp_hexdump(app_id->buffer, app_id->length);
 }
 //------------------------------------------------------------------------------

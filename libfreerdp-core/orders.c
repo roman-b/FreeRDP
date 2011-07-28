@@ -1970,19 +1970,21 @@ process_create_offscr_bitmap(rdpOrders * orders, STREAM s)
 static void
 process_alternate_secondary_window_order(rdpOrders * orders, STREAM s)
 {
-	//rail_on_altsec_window_order_received(orders->rdp->rail_session, s->p,
-	//		(size_t)(s->end - s->p));
-
 	uint16 order_size;
 	uint32 fields_present_flags;
-
-
 
 	in_uint16_le(s, order_size); /*OrderSize*/
 	in_uint32_le(s, fields_present_flags); /*FieldsPresentFlags*/
 
-	printf("AltSec Windowing Orders coming!(size=%d fields=0x%08X)\n",
+	printf("---------------------------------------------\n");
+	printf("AltSec Windowing Order (size=%d fields=0x%08X)\n",
 			order_size, fields_present_flags);
+
+	rail_on_altsec_window_order_received(orders->rdp->rail_session,
+			fields_present_flags,
+			s->p,
+			order_size
+			);
 
 	in_uint8s(s, order_size - 1 - 2 - 4);
 }
@@ -1991,10 +1993,6 @@ process_alternate_secondary_window_order(rdpOrders * orders, STREAM s)
 static int
 process_alternate_secondary_order(rdpOrders * orders, STREAM s, uint8 order_flags)
 {
-//	printf("AltSec Orders: flags=%X order=%d\n",
-//			order_flags & 0x2,
-//			order_flags >> 2);
-
 	if (!(order_flags & 0x2))
 	{
 		perror("alternate secondary order parsing failed\n");

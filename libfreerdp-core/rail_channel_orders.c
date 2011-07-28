@@ -510,14 +510,12 @@ rail_process_vchannel_exec_result_order(
 	uint16 flags = 0;
 	uint16 exec_result = 0;
 	uint32 raw_result = 0;
-	uint16 exe_or_file_length = 0;
 	RAIL_UNICODE_STRING exe_or_file = {0};
 
 	in_uint16_le(s, flags); /*Flags (2 bytes)*/
 	in_uint16_le(s, exec_result); /*ExecResult (2 bytes)*/
 	in_uint32_le(s, raw_result); /*RawResult (4 bytes)*/
 	in_uint8s(s, 2);  /*Padding (2 bytes)*/
-	in_uint16_le(s, exe_or_file_length); /*ExeOrFileLength (2 bytes)*/
 	in_rail_unicode_string(s, &exe_or_file); /*ExeOrFile (variable)*/
 
 	rail_handle_exec_result(session, flags, exec_result, raw_result,
@@ -688,7 +686,7 @@ rail_channel_process_received_data(
 	in_uint16_le(s, order_length); /* orderLength */
 
 	LLOGLN(10, ("rail_channel_process_received_data: session=0x%p data_size=%d "
-			    "orderType=0x%X orderLength=0x%X",
+			    "orderType=0x%X orderLength=%d",
 			    session,
 			    length,
 			    order_type,

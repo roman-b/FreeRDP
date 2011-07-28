@@ -127,13 +127,13 @@ typedef struct _RAIL_WINDOW_INFO
 	uint32	window_width;
 	uint32	window_height;
 
-	uint32			window_rects_number;
+	uint16			window_rects_number;
 	RAIL_RECT_16* 	window_rects;
 
 	uint32	visible_offset_x;
 	uint32	visible_offset_y;
 
-	uint32			visibility_rects_number;
+	uint16			visibility_rects_number;
 	RAIL_RECT_16* 	visibility_rects;
 
 } RAIL_WINDOW_INFO;
@@ -282,8 +282,9 @@ rail_process_window_capset(
 void
 rail_on_altsec_window_order_received(
 		RAIL_SESSION * rail_session,
+		uint32 fields_present_flags,
 		void* data,
-		size_t length
+		size_t order_size
 		);
 
 /* For communication with channel*/
